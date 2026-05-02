@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "TryOn",
+  "version": "0.0.1",
+  "description": "See how clothes, hairstyles, and beards look on you in one click while shopping.",
+  "action": {
+    "default_title": "TryOn"
+  },
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "contextMenus",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://*.myntra.com/*",
+    "https://*.amazon.in/*",
+    "https://*.flipkart.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*.workers.dev/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.myntra.com/*",
+        "https://*.amazon.in/*",
+        "https://*.flipkart.com/*"
+      ],
+      "js": ["src/content/index.ts"],
+      "run_at": "document_idle"
+    }
+  ]
+}

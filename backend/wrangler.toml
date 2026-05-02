@@ -1,0 +1,13 @@
+name = "tryon-dev"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "b828ee47194541a3abd452cfb6291766"
+
+# Secrets (set via `wrangler secret put GEMINI_API_KEY`):
+# - GEMINI_API_KEY
+
+[env.production]
+name = "tryon"
