@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { send } from '../messaging';
 import { compressImage } from '@/lib/image';
 import type {
@@ -6,6 +7,12 @@ import type {
   ReferencePhoto,
   RecentResult,
 } from '@/lib/types';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { EmptyState } from '../components/ui/EmptyState';
+import { useToast } from '../components/ui/Toast';
+import { humanizeError } from '../components/ui/errors';
+import { ResultSkeleton, ResultViewer } from '../components/ResultViewer';
 
 type Phase = 'idle' | 'loading' | 'done' | 'error';
 
@@ -17,6 +24,9 @@ export function Hair(): JSX.Element {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [result, setResult] = useState<RecentResult | null>(null);
   const [msTaken, setMsTaken] = useState<number | null>(null);
+  const sequenceRef = useRef(0);
+  const navigate = useNavigate();
+  const toast = useToast();
 
   async function refreshHair(): Promise<void> {
     const r = await send({ type: 'GET_HAIR_STATE' });
@@ -27,7 +37,6 @@ export function Hair(): JSX.Element {
     void (async (): Promise<void> => {
       const p = await send({ type: 'LIST_PHOTOS' });
       if (p.ok && 'photos' in p) {
-        // Prefer face photos for hair: sort face-first.
         const sorted = [...p.photos].sort((a, b) => {
           if (a.type === b.type) return 0;
           return a.type === 'face' ? -1 : 1;
@@ -78,11 +87,19 @@ export function Hair(): JSX.Element {
       hairSourceUrl: hairSource.url,
     });
     if (!r.ok) {
+      if (r.code === 'out_of_credits' || r.code === 'daily_cap') {
+        setPhase('idle');
+        navigate('/paywall');
+        return;
+      }
+      const human = humanizeError(r.code, r.message);
+      toast.show(human, 'signal');
       setPhase('error');
-      setErrorMsg(r.message);
+      setErrorMsg(human);
       return;
     }
     if ('result' in r) {
+      sequenceRef.current += 1;
       setResult(r.result);
       setMsTaken(r.ms_taken);
       setPhase('done');
@@ -92,6 +109,7 @@ export function Hair(): JSX.Element {
   async function startOver(): Promise<void> {
     await clearHair();
     setResult(null);
+    setMsTaken(null);
     setPhase('idle');
   }
 
@@ -102,68 +120,109 @@ export function Hair(): JSX.Element {
 
   if (photos.length === 0) {
     return (
-      <main className="p-4 text-sm text-gray-700">
-        Add a reference photo first under Settings (a face photo works best for hairstyles).
+      <main className="px-5">
+        <EmptyState
+          eyebrow="Step 01"
+          title="A face photo, please."
+          body="Add at least one face photo under Settings — it gives the model a clean canvas for hairstyles."
+          action={
+            <Link to="/settings">
+              <span className="inline-flex items-center gap-2 rounded-pill bg-accent-tint text-accent font-sans text-[11px] font-semibold tracking-cta px-4 py-2 hover:bg-accent hover:text-bone transition-colors duration-200 ease-editorial">
+                Go to Settings →
+              </span>
+            </Link>
+          }
+        />
       </main>
     );
   }
 
   return (
-    <main className="space-y-5 p-4">
-      {!hasFacePhoto && (
-        <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-          Tip: hair results are noticeably better with a <em>face</em> reference photo.
-          Upload one under Settings.
-        </p>
-      )}
+    <main className="space-y-6 px-5 py-6">
+      <header className="space-y-2">
+        <Badge tone="signal">◆ Hair Studio</Badge>
+        <h2 className="font-display text-display-lg font-semibold text-ink">
+          A new cut, <span className="italic text-accent">on you.</span>
+        </h2>
+        {!hasFacePhoto && (
+          <p className="font-sans text-caption text-mute mt-3 max-w-[440px]">
+            Tip: results are sharper with a face reference photo. Add one in Settings.
+          </p>
+        )}
+      </header>
 
       <Step n={1} title="Choose your face photo">
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-3 overflow-x-auto pb-1">
           {photos.map((p) => (
             <button
               key={p.id}
+              type="button"
               onClick={(): void => setActivePhotoId(p.id)}
-              className={`shrink-0 rounded border p-1 ${
-                activePhotoId === p.id ? 'border-black' : 'border-gray-200'
-              }`}
+              className="shrink-0"
               title={`${p.label} · ${p.type}`}
             >
-              <img src={p.data_url} alt={p.label} className="h-16 w-16 rounded object-cover" />
+              <span
+                className={[
+                  'block rounded-card transition-all duration-200 ease-editorial',
+                  activePhotoId === p.id
+                    ? 'p-[3px] ring-2 ring-accent ring-offset-2 ring-offset-paper'
+                    : 'p-[3px] hover:ring-1 hover:ring-rule',
+                ].join(' ')}
+              >
+                <img src={p.data_url} alt={p.label} className="block h-16 w-16 object-cover rounded-sm" />
+              </span>
+              <span
+                className={[
+                  'mt-1.5 block text-center font-sans text-[10px] font-semibold tracking-cta',
+                  activePhotoId === p.id ? 'text-accent' : 'text-mute',
+                ].join(' ')}
+              >
+                {p.type === 'face' ? 'FACE' : 'FULL'}
+              </span>
             </button>
           ))}
         </div>
         {activePhoto && (
-          <p className="mt-1 text-[11px] text-gray-500">
-            Selected: {activePhoto.label} ({activePhoto.type === 'face' ? 'face' : 'full body'})
-            {activePhoto.type !== 'face' && ' — face works better'}
+          <p className="font-sans text-caption text-mute mt-2">
+            Selected · {activePhoto.label}
+            {activePhoto.type !== 'face' && ' · face works better'}
           </p>
         )}
       </Step>
 
       <Step n={2} title="Pick a hairstyle reference">
         {hairSource ? (
-          <div className="flex items-center gap-3 rounded border border-gray-200 p-2">
-            <img
-              src={hairSource.url}
-              alt="hairstyle"
-              className="h-20 w-20 rounded object-cover"
-            />
-            <div className="flex-1 text-xs text-gray-600">
-              Hairstyle ready ({hairSource.origin === 'upload' ? 'uploaded' : 'from page'})
+          <div className="flex items-center gap-3 rounded-card bg-bone border border-accent-ring p-2 shadow-card">
+            <img src={hairSource.url} alt="hairstyle" className="h-20 w-20 object-cover rounded-sm" />
+            <div className="flex-1 min-w-0">
+              <span className="inline-flex items-center gap-1 rounded-pill bg-accent-tint text-accent font-sans text-[10px] font-bold tracking-cta px-2 py-0.5">
+                ✓ READY
+              </span>
+              <p className="font-sans text-caption text-ink mt-1">
+                Hairstyle ready · {hairSource.origin === 'upload' ? 'uploaded' : 'from page'}
+              </p>
             </div>
             <button
+              type="button"
               onClick={(): void => void clearHair()}
-              className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+              className="font-sans text-[10px] font-semibold uppercase tracking-cta text-mute hover:text-accent transition-colors duration-200 px-2 py-1"
+              aria-label="Remove"
             >
-              ×
+              REMOVE
             </button>
           </div>
         ) : (
-          <div className="space-y-2">
-            <p className="rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
-              Right-click any hairstyle image on a page → <em>Use this hairstyle in TryOn</em>,
-              or upload one below.
-            </p>
+          <div className="space-y-3">
+            <div className="rounded-card bg-accent-tint border border-accent-ring p-3 flex items-start gap-3">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-pill bg-accent text-bone shrink-0 font-sans text-[12px] font-bold">
+                ✦
+              </span>
+              <p className="font-sans text-caption text-ink">
+                Right-click any hairstyle image on a page →{' '}
+                <span className="font-semibold text-accent">Use this hairstyle in TRY · ON</span>.
+                Or upload one below.
+              </p>
+            </div>
             <input
               type="file"
               accept="image/*"
@@ -171,7 +230,7 @@ export function Hair(): JSX.Element {
                 const f = e.target.files?.[0];
                 if (f) void uploadHair(f);
               }}
-              className="block w-full text-xs"
+              className="block w-full text-caption text-ink file:mr-3 file:rounded-pill file:border file:border-accent-ring file:bg-bone file:px-3 file:py-1.5 file:font-sans file:text-[10px] file:font-semibold file:uppercase file:tracking-cta file:text-accent hover:file:bg-accent-tint hover:file:border-accent file:transition-colors file:duration-200"
             />
           </div>
         )}
@@ -179,58 +238,44 @@ export function Hair(): JSX.Element {
 
       {phase === 'loading' && <ResultSkeleton />}
 
-      {phase === 'done' && result && (
-        <section className="space-y-2">
-          <img
-            src={result.full_data_url}
-            alt="result"
-            className="w-full rounded border border-gray-200"
-          />
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={result.full_data_url}
-              download={`tryon-hair-${result.id}.png`}
-              className="rounded bg-black px-3 py-1.5 text-xs font-medium text-white"
-            >
-              Download
-            </a>
-            <button
-              onClick={(): void => void generate()}
-              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50"
-            >
-              Regenerate
-            </button>
-            <button
-              onClick={(): void => void startOver()}
-              className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-50"
-            >
-              Start over
-            </button>
-          </div>
-          <UsageIndicator msTaken={msTaken} />
+      {phase === 'done' && result && msTaken !== null && (
+        <ResultViewer
+          imageUrl={result.full_data_url}
+          msTaken={msTaken}
+          generationId={result.id}
+          sequence={sequenceRef.current}
+          onDownload={(): void => {
+            const a = document.createElement('a');
+            a.href = result.full_data_url;
+            a.download = `tryon-hair-${result.id}.png`;
+            a.click();
+          }}
+          onRegenerate={(): void => void generate()}
+          onStartOver={(): void => void startOver()}
+        />
+      )}
+
+      {phase === 'idle' && (
+        <section className="space-y-3 sticky bottom-[76px] -mx-5 px-5 pt-3 pb-4 bg-paper border-t border-rule">
+          <Button variant="primary" size="md" fullWidth disabled={!canGenerate} onClick={(): void => void generate()}>
+            Try this hairstyle
+            {canGenerate && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-4 w-4" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            )}
+          </Button>
         </section>
       )}
 
       {phase === 'error' && (
-        <section className="space-y-2 rounded border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-          <p>{errorMsg ?? 'Something went wrong.'}</p>
-          <button
-            onClick={(): void => void generate()}
-            className="rounded border border-red-300 bg-white px-3 py-1.5 font-medium text-red-700"
-          >
+        <section className="space-y-3 rounded-card bg-paper-subtle border border-rule p-4">
+          <p className="font-sans text-caption text-mute">{errorMsg}</p>
+          <Button variant="secondary" size="sm" onClick={(): void => void generate()}>
             Try again
-          </button>
+          </Button>
         </section>
-      )}
-
-      {phase === 'idle' && (
-        <button
-          disabled={!canGenerate}
-          onClick={(): void => void generate()}
-          className="w-full rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-300"
-        >
-          Try this hairstyle
-        </button>
       )}
     </main>
   );
@@ -246,32 +291,15 @@ function Step({
   children: React.ReactNode;
 }): JSX.Element {
   return (
-    <section className="space-y-2">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
-        Step {n} · {title}
+    <section className="rounded-card bg-bone border border-rule p-4 shadow-card space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-pill bg-accent text-bone font-sans text-[10px] font-bold">
+          {String(n).padStart(2, '0')}
+        </span>
+        <h3 className="font-display text-h2 font-semibold text-ink">{title}</h3>
       </div>
       {children}
     </section>
-  );
-}
-
-function ResultSkeleton(): JSX.Element {
-  return (
-    <div className="space-y-2">
-      <div className="h-64 w-full animate-pulse rounded bg-gray-200" />
-      <p className="text-xs text-gray-500">
-        Generating… usually 8–15 seconds.
-      </p>
-    </div>
-  );
-}
-
-function UsageIndicator({ msTaken }: { msTaken: number | null }): JSX.Element | null {
-  if (msTaken === null) return null;
-  return (
-    <p className="text-[11px] text-gray-500">
-      Generated in {(msTaken / 1000).toFixed(1)}s · approx ₹4–6 per try-on
-    </p>
   );
 }
 

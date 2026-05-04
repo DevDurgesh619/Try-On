@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy — TRY · ON</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,400;1,500;1,700&family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <style>
+      :root {
+        --ink: #0F0F1A;
+        --bone: #FFFFFF;
+        --paper: #FFFFFF;
+        --paper-subtle: #F8F7FB;
+        --muted: #4A4A55;
+        --muted-soft: #7A7A88;
+        --rule: #ECEAF3;
+        --accent: #7C3AED;
+        --accent-soft: #A855F7;
+        --accent-tint: #F3EDFF;
+        --accent-ring: #C4B5FD;
+        --gradient: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+        --serif: 'Playfair Display', 'Didot', 'Bodoni 72', 'Times New Roman', serif;
+        --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: var(--serif);
+        color: var(--ink);
+        background: var(--paper);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-size: 17px;
+        line-height: 1.65;
+      }
+      a { color: var(--accent); }
+      a:hover { color: var(--accent-soft); }
+      ::selection { background: var(--accent); color: #fff; }
+
+      .nav {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: saturate(140%) blur(10px);
+        -webkit-backdrop-filter: saturate(140%) blur(10px);
+        border-bottom: 1px solid var(--rule);
+      }
+      .nav-inner {
+        max-width: 1080px; margin: 0 auto;
+        padding: 14px 32px;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .wordmark {
+        font-family: var(--serif);
+        font-style: italic;
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .wordmark .pop { color: var(--ink); font-style: normal; }
+      .nav-cta {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: var(--accent-tint);
+        padding: 8px 16px;
+        border-radius: 9999px;
+        text-decoration: none;
+      }
+
+      .wrap { max-width: 720px; margin: 0 auto; padding: 64px 32px 96px; }
+
+      h1 {
+        font-family: var(--serif);
+        font-weight: 800;
+        font-size: clamp(48px, 7vw, 72px);
+        line-height: 1.0;
+        letter-spacing: -0.02em;
+        margin: 0 0 8px;
+      }
+      h1 em { font-style: italic; color: var(--accent); }
+
+      .meta {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted-soft);
+        margin: 0 0 48px;
+      }
+
+      h2 {
+        display: inline-flex;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: var(--accent-tint);
+        padding: 6px 14px;
+        border-radius: 9999px;
+        margin: 56px 0 20px;
+      }
+
+      p, li {
+        font-family: var(--serif);
+        font-size: 17px;
+        line-height: 1.65;
+        color: var(--ink);
+      }
+      p { margin: 0 0 18px; }
+      ul { padding-left: 22px; margin: 0 0 18px; }
+      li { margin-bottom: 10px; }
+
+      .lede {
+        font-size: 19px;
+        line-height: 1.55;
+        color: var(--ink);
+      }
+      .lede:first-letter {
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 80px;
+        line-height: 0.9;
+        float: left;
+        padding: 10px 14px 0 0;
+        font-weight: 800;
+        color: var(--accent);
+      }
+
+      strong { font-weight: 600; color: var(--accent); font-style: italic; }
+
+      code {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.86em;
+        padding: 2px 7px;
+        background: var(--accent-tint);
+        border: 1px solid var(--accent-ring);
+        color: var(--accent);
+        font-weight: 600;
+        border-radius: 6px;
+      }
+
+      footer {
+        border-top: 1px solid var(--rule);
+        background: var(--paper-subtle);
+        padding: 32px;
+      }
+      .footer-inner {
+        max-width: 1080px; margin: 0 auto;
+        display: flex; justify-content: space-between; align-items: center;
+        font-family: var(--sans);
+        font-size: 12px;
+        color: var(--muted-soft);
+      }
+      .footer-inner a {
+        color: var(--muted);
+        text-decoration: none;
+        margin-right: 24px;
+        font-weight: 500;
+      }
+      .footer-inner a:hover { color: var(--accent); }
+
+      @media (max-width: 720px) {
+        .nav-inner { padding: 14px 20px; }
+        .wrap { padding: 48px 20px 64px; }
+        .footer-inner { flex-direction: column; gap: 12px; align-items: flex-start; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="nav-inner">
+        <a class="wordmark" href="/">TRY<span class="pop">·</span>ON</a>
+        <a class="nav-cta" href="/">Back to home</a>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <h1>Privacy<em>.</em></h1>
+      <p class="meta">Last updated: 2026-05-03 · Effective from public launch</p>
+
+      <p class="lede">
+        Try · On is a Chrome extension that lets you try clothes and hairstyles on your own photo.
+        This page explains what we collect, what we do not, and how Google's Gemini API fits into
+        the picture.
+      </p>
+
+      <h2>What we collect</h2>
+      <ul>
+        <li>
+          <strong>Google account email and Google subject ID</strong> — when you choose to sign in
+          for additional free credits. Used to keep your credit balance attached to an account
+          across devices.
+        </li>
+        <li>
+          <strong>An anonymous device identifier (UUID)</strong> — generated locally in your
+          browser the first time you install. Used to track free-tier usage on this device.
+        </li>
+        <li>
+          <strong>Generation counts and timestamps</strong> — how many try-ons you have run, when.
+          Used to enforce free-tier limits and a daily safety ceiling.
+        </li>
+        <li>
+          <strong>Email address (optional)</strong> — if you join the waitlist for paid plans.
+          Stored in our database; used only to email you when plans launch.
+        </li>
+        <li>
+          <strong>Payment metadata</strong> — when paid plans launch, our payment processor
+          (Razorpay) will see your card details directly; we receive only a payment ID and amount.
+          (Not collected during the beta.)
+        </li>
+      </ul>
+
+      <h2>What we do not collect</h2>
+      <ul>
+        <li>
+          <strong>Your reference photos.</strong> They live in
+          <code>chrome.storage.local</code> on your machine. They never leave your device
+          <em>except</em> as inline image data on a single, transient API request to Google when
+          you click Generate. We never see, cache, log, or store the bytes on our servers.
+        </li>
+        <li>
+          <strong>Source images you click on.</strong> The image URL or bytes flow from your
+          browser, through our Cloudflare Worker, to Google's Gemini API. Not retained.
+        </li>
+        <li>
+          <strong>Generated try-on results.</strong> Returned to your browser and stored locally
+          in <code>chrome.storage.local</code> for the recents strip. Not retained on our servers.
+        </li>
+        <li>
+          <strong>Your browsing history.</strong> The extension only reads images on supported
+          sites when you explicitly hover or right-click them.
+        </li>
+      </ul>
+
+      <h2>Google Gemini API — important disclosure</h2>
+      <p>
+        We send your reference photo and the source image to Google's Gemini API (model:
+        <code>gemini-3.1-flash-image-preview</code>) over HTTPS for each generation. Google's
+        policy retains this data for up to <strong>30 days</strong> for abuse monitoring; after
+        that it is deleted. We do not control this retention; it is Google's policy. See Google's
+        <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">
+          Gemini API Additional Terms of Service</a>
+        for details.
+      </p>
+
+      <h2>Where data lives</h2>
+      <ul>
+        <li><strong>On your device.</strong> Reference photos, recent results, anonymous device ID, auth tokens.</li>
+        <li><strong>On our servers (Cloudflare D1, edge-deployed).</strong> Google email plus subject ID, credit balance, generation counts, waitlist email.</li>
+        <li><strong>On Google's servers.</strong> Reference photo plus source image for up to 30 days for Gemini abuse monitoring.</li>
+      </ul>
+
+      <h2>Your rights</h2>
+      <ul>
+        <li>
+          <strong>Right to delete.</strong> Email
+          <a href="mailto:support@tryon-9z6.pages.dev">support@tryon-9z6.pages.dev</a> from your
+          signed-in Google address. We delete your account and ledger within 30 days. Data on
+          Google's side falls off their 30-day retention independently.
+        </li>
+        <li>
+          <strong>Right to export.</strong> Email us; we will send you the rows we have for your
+          account in JSON.
+        </li>
+        <li>
+          <strong>EU/UK (GDPR), India (DPDP Act), California (CCPA).</strong> Same channel; we
+          treat all rights requests under whichever regime gives you the most protection.
+        </li>
+      </ul>
+
+      <h2>Cookies</h2>
+      <p>
+        The extension uses <code>chrome.storage.local</code> and
+        <code>chrome.storage.session</code> for state. The marketing site you are reading uses no
+        cookies and no analytics.
+      </p>
+
+      <h2>Children</h2>
+      <p>
+        Try · On is not intended for users under 13. We do not knowingly collect data from
+        children. If you believe a child has signed in, email us and we will delete the account.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        Material changes will be announced in the extension UI before they take effect. The "Last
+        updated" date at the top of this page reflects any change.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        <a href="mailto:support@tryon-9z6.pages.dev">support@tryon-9z6.pages.dev</a>
+      </p>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <div>
+          <a href="/">Home</a>
+          <a href="/terms.html">Terms</a>
+          <a href="mailto:support@tryon-9z6.pages.dev">Contact</a>
+        </div>
+        <span>© MMXXVI · TRY · ON</span>
+      </div>
+    </footer>
+  </body>
+</html>

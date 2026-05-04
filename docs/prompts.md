@@ -134,6 +134,32 @@ Additionally, after the garment image(s), every remaining image in this request 
 
 The clause is inserted **immediately before** the line "The output must be a single image. Do not return text." — never at the very end, so the model still gets the single-image instruction last.
 
+### HAIR_IN_OUTFIT_CLAUSE — appended when an outfit try-on also includes a hairstyle reference
+
+Mode 1 has an optional `outfit_hair_source` input — a haircut reference that arrives alongside the outfit (e.g. user picks a top from Myntra and a hairstyle from a Pinterest pin). When present, the hair source is sent as the **LAST** image in the request so the existing accessory clause's "every image after the garments is an accessory" wording still works for accessories. The hair clause then explicitly carves the last image out of the accessory rule.
+
+The clause below is inserted **immediately before** the final "The output must be a single image. Do not return text." line, and **after** any accessory clause if both are present.
+
+The Outfit pipeline is a convenience surface for hair — the dedicated Hair tab (Mode 2) with a face-only reference photo remains the higher-quality path, and the side panel UI nudges users toward it. The clause therefore has to do most of the heavy lifting that `HAIR_PROMPT` does, but condensed so the combined prompt does not become unwieldy.
+
+```
+Additionally, this request changes the user's hairstyle as well as their outfit. The earlier instruction to "keep the user's hair exactly as in the first image" is overridden — but ONLY for the hair on the head. Every other preserved element (face, facial features, expression, skin tone, body, beard / mustache / facial hair, jewelry, background, and the clothing rules above) still applies in full.
+
+The LAST image in this request is a STYLE REFERENCE for the haircut. It is NOT a garment and NOT an accessory — do not place it on the body. Use it ONLY as a guide to the SHAPE of the cut.
+
+Take from the last image: the cut, length, layering, silhouette, parting, fringe / bangs shape, how the hair sits around the ears and neckline, the styling (straight, wavy, curly, slicked, tousled, etc.), and the relative volume.
+
+Do NOT take from the last image: its pixel colors, exposure, brightness, contrast, white balance, ambient color cast, highlight placement, specular shine, shadow direction, image grain, or the reference person's skin / scalp / head shape.
+
+Re-render the new hair from scratch as if it were freshly photographed on the user, in the user's first-image scene, under the user's first-image lighting, at the user's first-image exposure. Every strand's brightness, every highlight, every shadow must be derived from the first image's lighting environment, never from the last image's. Match the photographic sharpness and grain of the first image.
+
+Hair color: keep the user's own natural hair color from the first image as the base tone. Do NOT dye their hair just because the reference person has a different color. The only exception is when the reference style is defined by a clearly non-natural color treatment (e.g. obvious bleach blonde, dyed pink) that is plainly part of the style intent — in that case apply the treatment, but still relight it to match the first image.
+
+The new hair must conform to the user's actual head shape and hairline — drape it on their head, do not graft on the reference person's scalp. If the style includes a fringe or bangs, place them naturally over the user's forehead and re-light them onto the forehead; do not redraw the forehead skin, eyebrows, or eyes underneath.
+
+Final check: the output must look like a single photograph of the user, taken in the same lighting as their reference photo, after a real haircut and outfit change in one sitting — not a composite.
+```
+
 ---
 
 ## Mode 2 — Hairstyle Try-On (v1: hair only)

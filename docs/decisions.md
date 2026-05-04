@@ -121,6 +121,17 @@ Locked-in choices and the reasoning. Claude should **not** propose alternatives 
 - Hover button stays clothing-only. There's no obvious "hover one image to try as hair" mental model on shopping sites; right-click + upload are the deliberate paths.
 **Revisit if:** Demand emerges for beard support — add `BEARD_PROMPT` and surface a "Hair / Beard / Both" toggle in the Hair tab; the `mode` enum already supports `'hair'`, room for `'beard'` and `'both'` is already in `target`-style design.
 
+## D13 — Outfit Mode adds an optional hair source (convenience, not the primary path)
+**Date:** 2026-05-03
+**Choice:** Mode 1 gains an optional `outfit_hair_source` input alongside garments + accessories. When present, the haircut reference is sent as the LAST image to Gemini and a new `HAIR_IN_OUTFIT_CLAUSE` is appended after any accessory clause. The dedicated Hair tab (Mode 2, D12) remains the high-fidelity path.
+**Why:**
+- Beta users wanted to bundle "and try this haircut" with an outfit pick from sites like Pinterest in a single try-on rather than switching tabs.
+- The combined surface is intentionally a *convenience* — a full-body reference photo and a stacked prompt mean hair fidelity will be ~80% of the dedicated Hair pipeline. The UI nudges users toward the Hair tab for sharper results.
+- Right-click "Use this hairstyle in TryOn" smart-routes by the side panel's active tab: on Outfit it lands as outfit hair; on Hair (or with the panel closed) it lands in the Hair tab.
+- Image ordering keeps the existing accessory clause's "every image after the garments is an accessory" wording correct: hair comes LAST, after accessories, and the new clause explicitly carves it out.
+- The hair-in-outfit clause is a tighter version of `HAIR_PROMPT` — same shape-only / re-render-from-scratch / re-light-to-the-first-image rules, condensed so the combined prompt stays manageable.
+**Revisit if:** Quality complaints surface — at which point we can either tighten the clause further or formally route Outfit-with-hair through the Hair-tab prompt for the hair portion. Or, if the convenience surface becomes the primary use, promote it and deprecate the Hair tab.
+
 ---
 
 ## Open decisions (not yet locked)

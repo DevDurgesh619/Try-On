@@ -6,6 +6,7 @@ const CONTEXT_MENU_GARMENT = 'tryon-image';
 const CONTEXT_MENU_ACCESSORY = 'tryon-accessory';
 const CONTEXT_MENU_HAIRSTYLE = 'tryon-hairstyle';
 const LAST_ACTION_KEY = 'last_action';
+const ACTIVE_TAB_KEY = 'active_tab';
 
 function registerContextMenus(): void {
   // Idempotent: removeAll before create so reloading the unpacked extension
@@ -32,7 +33,44 @@ function registerContextMenus(): void {
 chrome.runtime.onInstalled.addListener(() => {
   void getOrCreateDeviceId();
   registerContextMenus();
+  void reinjectContentScripts();
 });
+
+/**
+ * Chrome does NOT re-inject content scripts into already-open tabs when an
+ * extension is installed/reloaded/updated. Without this, a user reloading
+ * the unpacked extension would have to manually refresh every Pinterest /
+ * Myntra / Amazon tab to get the hover button back. We do it for them.
+ *
+ * Reads the manifest's content_scripts entries, queries matching tabs, and
+ * runs the listed JS files in each. Failures (chrome:// pages, blocked
+ * origins, etc.) are swallowed silently.
+ */
+async function reinjectContentScripts(): Promise<void> {
+  const entries = chrome.runtime.getManifest().content_scripts ?? [];
+  for (const cs of entries) {
+    const matches = cs.matches ?? [];
+    const files = (cs.js ?? []).filter((f): f is string => typeof f === 'string');
+    if (matches.length === 0 || files.length === 0) continue;
+    let tabs: chrome.tabs.Tab[] = [];
+    try {
+      tabs = await chrome.tabs.query({ url: matches });
+    } catch {
+      continue;
+    }
+    for (const tab of tabs) {
+      if (typeof tab.id !== 'number') continue;
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id, allFrames: false },
+          files,
+        });
+      } catch {
+        // Frame disallowed (e.g. chrome web store, login challenge). Skip.
+      }
+    }
+  }
+}
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!info.srcUrl) return;
@@ -50,11 +88,25 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     });
     await chrome.storage.session.set({ [LAST_ACTION_KEY]: 'outfit' });
   } else if (info.menuItemId === CONTEXT_MENU_HAIRSTYLE) {
-    await handleMessage({
-      type: 'SET_PENDING_HAIR_SOURCE',
-      source: { url: info.srcUrl, origin: 'context_menu' },
-    });
-    await chrome.storage.session.set({ [LAST_ACTION_KEY]: 'hair' });
+    // Smart-route by which tab the side panel is currently on. If the user
+    // is mid-flow on Outfit, the click adds to the outfit's optional hair
+    // source. Otherwise (Hair tab, Settings, or panel closed) we route to
+    // the dedicated Hair pipeline — the higher-quality default.
+    const stored = await chrome.storage.session.get(ACTIVE_TAB_KEY);
+    const tab = stored[ACTIVE_TAB_KEY];
+    if (tab === 'outfit') {
+      await handleMessage({
+        type: 'SET_PENDING_OUTFIT_HAIR_SOURCE',
+        source: { url: info.srcUrl, origin: 'context_menu' },
+      });
+      await chrome.storage.session.set({ [LAST_ACTION_KEY]: 'outfit' });
+    } else {
+      await handleMessage({
+        type: 'SET_PENDING_HAIR_SOURCE',
+        source: { url: info.srcUrl, origin: 'context_menu' },
+      });
+      await chrome.storage.session.set({ [LAST_ACTION_KEY]: 'hair' });
+    }
   } else {
     return;
   }

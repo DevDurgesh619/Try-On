@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Terms — TRY · ON</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;1,400;1,500;1,700&family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <style>
+      :root {
+        --ink: #0F0F1A;
+        --bone: #FFFFFF;
+        --paper: #FFFFFF;
+        --paper-subtle: #F8F7FB;
+        --muted: #4A4A55;
+        --muted-soft: #7A7A88;
+        --rule: #ECEAF3;
+        --accent: #7C3AED;
+        --accent-soft: #A855F7;
+        --accent-tint: #F3EDFF;
+        --accent-ring: #C4B5FD;
+        --serif: 'Playfair Display', 'Didot', 'Bodoni 72', 'Times New Roman', serif;
+        --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        font-family: var(--serif);
+        color: var(--ink);
+        background: var(--paper);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-size: 17px;
+        line-height: 1.65;
+      }
+      a { color: var(--accent); }
+      a:hover { color: var(--accent-soft); }
+      ::selection { background: var(--accent); color: #fff; }
+
+      .nav {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: saturate(140%) blur(10px);
+        -webkit-backdrop-filter: saturate(140%) blur(10px);
+        border-bottom: 1px solid var(--rule);
+      }
+      .nav-inner {
+        max-width: 1080px; margin: 0 auto;
+        padding: 14px 32px;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .wordmark {
+        font-family: var(--serif);
+        font-style: italic; font-weight: 800;
+        font-size: 22px; letter-spacing: 0.02em;
+        color: var(--accent); text-decoration: none;
+      }
+      .wordmark .pop { color: var(--ink); font-style: normal; }
+      .nav-cta {
+        font-family: var(--sans);
+        font-weight: 600; font-size: 11px;
+        letter-spacing: 0.14em; text-transform: uppercase;
+        color: var(--accent); background: var(--accent-tint);
+        padding: 8px 16px; border-radius: 9999px;
+        text-decoration: none;
+      }
+
+      .wrap { max-width: 720px; margin: 0 auto; padding: 64px 32px 96px; }
+
+      h1 {
+        font-family: var(--serif);
+        font-weight: 800;
+        font-size: clamp(48px, 7vw, 72px);
+        line-height: 1.0;
+        letter-spacing: -0.02em;
+        margin: 0 0 8px;
+      }
+      h1 em { font-style: italic; color: var(--accent); }
+
+      .meta {
+        font-family: var(--sans);
+        font-size: 11px; font-weight: 600;
+        letter-spacing: 0.18em; text-transform: uppercase;
+        color: var(--muted-soft);
+        margin: 0 0 48px;
+      }
+
+      h2 {
+        display: inline-flex;
+        font-family: var(--sans);
+        font-weight: 700; font-size: 11px;
+        letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--accent); background: var(--accent-tint);
+        padding: 6px 14px; border-radius: 9999px;
+        margin: 56px 0 20px;
+      }
+
+      p, li {
+        font-family: var(--serif);
+        font-size: 17px; line-height: 1.65;
+        color: var(--ink);
+      }
+      p { margin: 0 0 18px; }
+      ul { padding-left: 22px; margin: 0 0 18px; }
+      li { margin-bottom: 10px; }
+
+      .lede {
+        font-size: 19px; line-height: 1.55;
+        color: var(--ink);
+      }
+      .lede:first-letter {
+        font-family: var(--serif); font-style: italic;
+        font-size: 80px; line-height: 0.9;
+        float: left; padding: 10px 14px 0 0;
+        font-weight: 800; color: var(--accent);
+      }
+
+      strong { font-weight: 600; color: var(--accent); font-style: italic; }
+
+      footer {
+        border-top: 1px solid var(--rule);
+        background: var(--paper-subtle);
+        padding: 32px;
+      }
+      .footer-inner {
+        max-width: 1080px; margin: 0 auto;
+        display: flex; justify-content: space-between; align-items: center;
+        font-family: var(--sans); font-size: 12px;
+        color: var(--muted-soft);
+      }
+      .footer-inner a {
+        color: var(--muted); text-decoration: none;
+        margin-right: 24px; font-weight: 500;
+      }
+      .footer-inner a:hover { color: var(--accent); }
+
+      @media (max-width: 720px) {
+        .nav-inner { padding: 14px 20px; }
+        .wrap { padding: 48px 20px 64px; }
+        .footer-inner { flex-direction: column; gap: 12px; align-items: flex-start; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="nav-inner">
+        <a class="wordmark" href="/">TRY<span class="pop">·</span>ON</a>
+        <a class="nav-cta" href="/">Back to home</a>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <h1>Terms<em>.</em></h1>
+      <p class="meta">Last updated: 2026-05-03</p>
+
+      <p class="lede">
+        By installing or using Try · On (the "Service"), you agree to these Terms. If you do not
+        agree, please uninstall the extension. We have written them in plain language; they are no
+        less binding for it.
+      </p>
+
+      <h2>I. Acceptable use</h2>
+      <p>You agree not to use Try · On to:</p>
+      <ul>
+        <li>
+          Generate imagery of any person without their explicit consent. The reference photo must
+          be of yourself, or someone who has authorized you to use their likeness.
+        </li>
+        <li>
+          Generate imagery of public figures, celebrities, or any identifiable third party without
+          consent. No deepfakes.
+        </li>
+        <li>Generate imagery of minors. Reference photos must depict adults.</li>
+        <li>
+          Generate sexually explicit, violent, harassing, or otherwise harmful content.
+        </li>
+        <li>
+          Resell, redistribute, or commercially license generated imagery without our prior
+          written consent.
+        </li>
+        <li>
+          Reverse-engineer, scrape, or attempt to bypass the Service's rate limits, free-tier
+          caps, or authentication.
+        </li>
+      </ul>
+      <p>
+        Violations may result in immediate termination of your account and forfeiture of any
+        unused credits.
+      </p>
+
+      <h2>II. Intellectual property in source images</h2>
+      <p>
+        Try · On extracts product images from third-party sites (e.g. Myntra, Amazon, Flipkart,
+        Pinterest) for the sole purpose of personally trying them on. You are responsible for
+        ensuring your use complies with the source site's terms. We do not republish, cache,
+        redistribute, or train on these images.
+      </p>
+
+      <h2>III. Generated results</h2>
+      <p>
+        Result images are produced by Google's Gemini model. They are AI approximations, not exact
+        representations. Fit, fabric drape, color accuracy, and styling will vary. Try · On is
+        intended as a vibe check, not a substitute for trying the actual garment on. We make no
+        warranty that a generated result accurately predicts how a garment will look on you in
+        real life.
+      </p>
+      <p>
+        You retain whatever rights you would have had in the inputs you provided. You agree not to
+        claim authorship of, copyright in, or commercial rights to a generated result that
+        incorporates a third party's product photography unless you obtain those rights
+        separately.
+      </p>
+
+      <h2>IV. Free credits, paid credits, refunds</h2>
+      <p>
+        During the beta, Try · On is free. We grant a limited number of try-ons per device and per
+        signed-in account at our sole discretion. Free credits have no monetary value, are not
+        transferrable, and may be revoked or reduced at any time.
+      </p>
+      <p>
+        When paid plans launch, terms specific to those plans (pricing, expiry, refund
+        eligibility) will be presented at the point of purchase and override anything in this
+        section to the contrary.
+      </p>
+
+      <h2>V. Account termination</h2>
+      <p>
+        You may delete your account at any time by emailing
+        <a href="mailto:support@tryon-9z6.pages.dev">support@tryon-9z6.pages.dev</a>. We may
+        terminate or suspend accounts that violate Section I without notice.
+      </p>
+
+      <h2>VI. Service availability</h2>
+      <p>
+        We provide Try · On "as is" and "as available." We do not guarantee uptime, latency,
+        generation quality, or that any specific site adapter (Myntra, Amazon, Flipkart,
+        Pinterest, etc.) will continue to work as those sites change their layouts.
+      </p>
+
+      <h2>VII. Limitation of liability</h2>
+      <p>
+        To the maximum extent permitted by law, Try · On is provided without warranty. Our
+        liability for any claim arising out of your use of the Service is capped at the amount you
+        have paid us in the 12 months prior to the claim, which during the free beta is ₹0.
+      </p>
+
+      <h2>VIII. Governing law</h2>
+      <p>
+        These Terms are governed by the laws of India. Disputes will be resolved in the courts of
+        Bengaluru, India. If you are an EU/UK consumer, you retain any non-waivable
+        consumer-protection rights granted by your local law.
+      </p>
+
+      <h2>IX. Changes</h2>
+      <p>
+        We may update these Terms. Material changes will be announced in the extension UI.
+        Continued use after a change means you accept the new Terms.
+      </p>
+
+      <h2>X. Contact</h2>
+      <p>
+        <a href="mailto:support@tryon-9z6.pages.dev">support@tryon-9z6.pages.dev</a>
+      </p>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <div>
+          <a href="/">Home</a>
+          <a href="/privacy.html">Privacy</a>
+          <a href="mailto:support@tryon-9z6.pages.dev">Contact</a>
+        </div>
+        <span>© MMXXVI · TRY · ON</span>
+      </div>
+    </footer>
+  </body>
+</html>

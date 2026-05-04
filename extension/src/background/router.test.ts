@@ -227,13 +227,13 @@ describe('router', () => {
     expect(sent.garments.map((g) => g.slot).sort()).toEqual(['bottom', 'top']);
   });
 
-  it("hover SOURCE_IMAGE_SELECTED routes to accessories once a garment exists and mode='custom'", async () => {
-    await handleMessage({ type: 'SET_OUTFIT_TYPE', outfitType: 'full' });
+  it("hover SOURCE_IMAGE_SELECTED routes to accessories when pendingTarget='accessory'", async () => {
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'full' });
     await handleMessage({
       type: 'ADD_PENDING_GARMENT',
       garment: { slot: 'full', url: 'GARMENT', origin: 'hover' },
     });
-    await handleMessage({ type: 'SET_ACCESSORIES_MODE', mode: 'custom' });
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'accessory' });
     await handleMessage({
       type: 'SOURCE_IMAGE_SELECTED',
       url: 'WATCH',
@@ -244,50 +244,52 @@ describe('router', () => {
     expect(r.garments).toHaveLength(1);
     expect(r.garments[0]?.url).toBe('GARMENT');
     expect(r.accessories.map((a) => a.url)).toEqual(['WATCH']);
+    expect(r.accessoriesMode).toBe('custom'); // auto-flipped
   });
 
-  it("hover smart-route triggers in split mode after only 1 garment (top) when mode='custom'", async () => {
-    await handleMessage({ type: 'SET_OUTFIT_TYPE', outfitType: 'split' });
+  it("hover SOURCE_IMAGE_SELECTED routes to outfit hair when pendingTarget='hair'", async () => {
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'top' });
     await handleMessage({
       type: 'ADD_PENDING_GARMENT',
       garment: { slot: 'top', url: 'TOP', origin: 'hover' },
     });
-    await handleMessage({ type: 'SET_ACCESSORIES_MODE', mode: 'custom' });
-    // Bottom slot is intentionally empty; hover-click on a watch should land
-    // as an accessory, NOT as the bottom garment.
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'hair' });
     await handleMessage({
       type: 'SOURCE_IMAGE_SELECTED',
-      url: 'WATCH',
+      url: 'STYLE',
       origin: 'hover',
     });
     const r = await handleMessage({ type: 'GET_TRYON_STATE' });
-    if (!r.ok || !('accessoriesMode' in r)) throw new Error('expected tryon state');
+    if (!r.ok || !('outfitHairSource' in r)) throw new Error('expected tryon state');
     expect(r.garments).toHaveLength(1);
-    expect(r.garments[0]?.url).toBe('TOP');
     expect(r.garments[0]?.slot).toBe('top');
-    expect(r.accessories.map((a) => a.url)).toEqual(['WATCH']);
+    expect(r.outfitHairSource?.url).toBe('STYLE');
   });
 
-  it("right-click 'Try this on with TryOn' stays an explicit garment add even in custom mode", async () => {
-    // Escape hatch: after top is picked and mode='custom', user can still add
-    // a bottom via the right-click "Try this on" entry (origin='context_menu').
-    await handleMessage({ type: 'SET_OUTFIT_TYPE', outfitType: 'split' });
+  it("right-click 'Try this on with TryOn' is always a garment, slot from pendingTarget", async () => {
+    // The user has 'top' filled and pendingTarget switched to 'hair'. Right-
+    // clicking another image with "Try this on with TryOn" must NOT land in
+    // the hair slot — it's the explicit garment menu entry. We use the
+    // pendingTarget for slot when it's a garment-slot value, else fall back
+    // to 'full'. Here pendingTarget='hair' isn't a garment slot, so the new
+    // image lands as 'full' and (per mutex) clears top.
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'top' });
     await handleMessage({
       type: 'ADD_PENDING_GARMENT',
       garment: { slot: 'top', url: 'TOP', origin: 'hover' },
     });
-    await handleMessage({ type: 'SET_ACCESSORIES_MODE', mode: 'custom' });
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'hair' });
     await handleMessage({
       type: 'SOURCE_IMAGE_SELECTED',
       url: 'BOTTOM',
       origin: 'context_menu',
     });
     const r = await handleMessage({ type: 'GET_TRYON_STATE' });
-    if (!r.ok || !('accessoriesMode' in r)) throw new Error('expected tryon state');
-    const byUrl = Object.fromEntries(r.garments.map((g) => [g.url, g.slot]));
-    expect(byUrl.TOP).toBe('top');
-    expect(byUrl.BOTTOM).toBe('bottom');
-    expect(r.accessories).toEqual([]);
+    if (!r.ok || !('outfitHairSource' in r)) throw new Error('expected tryon state');
+    expect(r.outfitHairSource).toBeNull();
+    expect(r.garments).toHaveLength(1);
+    expect(r.garments[0]?.slot).toBe('full');
+    expect(r.garments[0]?.url).toBe('BOTTOM');
   });
 
   it("SOURCE_IMAGE_SELECTED still routes to garments when mode='off' even if garments are full", async () => {
@@ -320,15 +322,18 @@ describe('router', () => {
     expect(r.garments[0]?.slot).toBe('full');
   });
 
-  it("SET_OUTFIT_TYPE='split' makes subsequent adds top, then bottom", async () => {
-    await handleMessage({ type: 'SET_OUTFIT_TYPE', outfitType: 'split' });
+  it('hover with target=top then target=bottom fills both slots independently', async () => {
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'top' });
     await handleMessage({
-      type: 'ADD_PENDING_GARMENT',
-      garment: { slot: 'full', url: 'A', origin: 'hover' },
+      type: 'SOURCE_IMAGE_SELECTED',
+      url: 'A',
+      origin: 'hover',
     });
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'bottom' });
     await handleMessage({
-      type: 'ADD_PENDING_GARMENT',
-      garment: { slot: 'full', url: 'B', origin: 'hover' },
+      type: 'SOURCE_IMAGE_SELECTED',
+      url: 'B',
+      origin: 'hover',
     });
     const r = await handleMessage({ type: 'GET_PENDING_GARMENTS' });
     if (!r.ok || !('garments' in r)) throw new Error('expected garments');
@@ -337,21 +342,38 @@ describe('router', () => {
     expect(byUrl.B).toBe('bottom');
   });
 
-  it("switching from 'split' back to 'full' collapses to a single full garment", async () => {
-    await handleMessage({ type: 'SET_OUTFIT_TYPE', outfitType: 'split' });
+  it("switching pendingTarget to 'full' clears any existing top/bottom (mutex)", async () => {
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'top' });
     await handleMessage({
-      type: 'ADD_PENDING_GARMENT',
-      garment: { slot: 'top', url: 'A', origin: 'hover' },
+      type: 'SOURCE_IMAGE_SELECTED',
+      url: 'A',
+      origin: 'hover',
     });
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'bottom' });
     await handleMessage({
-      type: 'ADD_PENDING_GARMENT',
-      garment: { slot: 'bottom', url: 'B', origin: 'hover' },
+      type: 'SOURCE_IMAGE_SELECTED',
+      url: 'B',
+      origin: 'hover',
     });
-    await handleMessage({ type: 'SET_OUTFIT_TYPE', outfitType: 'full' });
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'full' });
     const r = await handleMessage({ type: 'GET_PENDING_GARMENTS' });
     if (!r.ok || !('garments' in r)) throw new Error('expected garments');
-    expect(r.garments).toHaveLength(1);
-    expect(r.garments[0]?.slot).toBe('full');
+    // No 'full' garment exists yet, so the list is empty after the mutex
+    // sweep. Adding a full garment now would put it in.
+    expect(r.garments).toEqual([]);
+  });
+
+  it("switching pendingTarget away from 'full' clears the existing full garment", async () => {
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'full' });
+    await handleMessage({
+      type: 'SOURCE_IMAGE_SELECTED',
+      url: 'OUTFIT',
+      origin: 'hover',
+    });
+    await handleMessage({ type: 'SET_PENDING_TARGET', target: 'top' });
+    const r = await handleMessage({ type: 'GET_PENDING_GARMENTS' });
+    if (!r.ok || !('garments' in r)) throw new Error('expected garments');
+    expect(r.garments).toEqual([]);
   });
 
   it('CLEAR_PENDING_GARMENTS empties the list', async () => {
@@ -488,6 +510,168 @@ describe('router', () => {
     expect(sent.hair_source.image).toBe('SRC');
     expect(sent.garments).toBeUndefined();
     expect(sent.accessories).toBeUndefined();
+  });
+
+  it('SET_PENDING_OUTFIT_HAIR_SOURCE round-trips and is reported via GET_TRYON_STATE', async () => {
+    await handleMessage({
+      type: 'SET_PENDING_OUTFIT_HAIR_SOURCE',
+      source: { url: 'https://x/style.jpg', origin: 'context_menu' },
+    });
+    const r = await handleMessage({ type: 'GET_TRYON_STATE' });
+    if (!r.ok || !('outfitHairSource' in r)) throw new Error('expected tryon state');
+    expect(r.outfitHairSource?.url).toBe('https://x/style.jpg');
+  });
+
+  it('CLEAR_PENDING_OUTFIT_HAIR_SOURCE empties it without touching the dedicated Hair tab source', async () => {
+    await handleMessage({
+      type: 'SET_PENDING_HAIR_SOURCE',
+      source: { url: 'HAIR_TAB', origin: 'context_menu' },
+    });
+    await handleMessage({
+      type: 'SET_PENDING_OUTFIT_HAIR_SOURCE',
+      source: { url: 'OUTFIT_TAB', origin: 'context_menu' },
+    });
+    await handleMessage({ type: 'CLEAR_PENDING_OUTFIT_HAIR_SOURCE' });
+    const tryon = await handleMessage({ type: 'GET_TRYON_STATE' });
+    if (!tryon.ok || !('outfitHairSource' in tryon)) throw new Error('expected tryon state');
+    expect(tryon.outfitHairSource).toBeNull();
+    const hair = await handleMessage({ type: 'GET_HAIR_STATE' });
+    if (!hair.ok || !('source' in hair)) throw new Error('expected hair state');
+    expect(hair.source?.url).toBe('HAIR_TAB');
+  });
+
+  it('outfit GENERATE with outfitHairSourceUrl forwards hair_source in the backend payload', async () => {
+    const { updateSettings } = await import('@/lib/storage');
+    await updateSettings({ use_placeholder_images: false });
+    const saved = await handleMessage({
+      type: 'SAVE_PHOTO',
+      label: 'fb',
+      photoType: 'full_body',
+      data_url: 'data:image/jpeg;base64,REF',
+    });
+    if (!saved.ok || !('photo' in saved)) throw new Error('save failed');
+
+    const fakeFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: true,
+            image: 'IMG',
+            mime_type: 'image/png',
+            generation_id: 'g-oh',
+            ms_taken: 5,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    );
+    const r = await handleMessage(
+      {
+        type: 'GENERATE',
+        mode: 'outfit',
+        referencePhotoId: saved.photo.id,
+        garments: [{ slot: 'full', sourceImageUrl: 'https://x/g.jpg' }],
+        accessoriesMode: 'off',
+        outfitHairSourceUrl: 'https://x/cut.jpg',
+      },
+      {
+        fetchSource: vi.fn(async () => ({
+          data_url: 'data:image/jpeg;base64,SRC',
+          mime_type: 'image/jpeg',
+        })),
+        backend: { fetch: fakeFetch, baseUrl: 'http://test', retries: 0 },
+      },
+    );
+    expect(r.ok).toBe(true);
+    expect(fakeFetch).toHaveBeenCalledTimes(1);
+    const calls = fakeFetch.mock.calls as unknown as [string, RequestInit][];
+    const sent = JSON.parse(calls[0]?.[1].body as string) as {
+      mode: string;
+      garments: unknown[];
+      hair_source?: { image: string; mime: string };
+    };
+    expect(sent.mode).toBe('outfit');
+    expect(sent.garments).toHaveLength(1);
+    expect(sent.hair_source?.image).toBe('SRC');
+    expect(sent.hair_source?.mime).toBe('image/jpeg');
+  });
+
+  it('outfit GENERATE without outfitHairSourceUrl omits hair_source in the backend payload', async () => {
+    const { updateSettings } = await import('@/lib/storage');
+    await updateSettings({ use_placeholder_images: false });
+    const saved = await handleMessage({
+      type: 'SAVE_PHOTO',
+      label: 'fb',
+      photoType: 'full_body',
+      data_url: 'data:image/jpeg;base64,REF',
+    });
+    if (!saved.ok || !('photo' in saved)) throw new Error('save failed');
+    const fakeFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: true,
+            image: 'IMG',
+            mime_type: 'image/png',
+            generation_id: 'g',
+            ms_taken: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    );
+    await handleMessage(
+      {
+        type: 'GENERATE',
+        mode: 'outfit',
+        referencePhotoId: saved.photo.id,
+        garments: [{ slot: 'full', sourceImageUrl: 'https://x/g.jpg' }],
+        accessoriesMode: 'off',
+      },
+      {
+        fetchSource: vi.fn(async () => ({
+          data_url: 'data:image/jpeg;base64,SRC',
+          mime_type: 'image/jpeg',
+        })),
+        backend: { fetch: fakeFetch, baseUrl: 'http://test', retries: 0 },
+      },
+    );
+    const calls = fakeFetch.mock.calls as unknown as [string, RequestInit][];
+    const sent = JSON.parse(calls[0]?.[1].body as string) as { hair_source?: unknown };
+    expect(sent.hair_source).toBeUndefined();
+  });
+
+  it("hover SOURCE_IMAGE_SELECTED routes to the Hair pipeline when active_tab='hair'", async () => {
+    await handleMessage({ type: 'SET_ACTIVE_TAB', tab: 'hair' });
+    await handleMessage({
+      type: 'SOURCE_IMAGE_SELECTED',
+      url: 'https://i.pinimg.com/cut.jpg',
+      origin: 'hover',
+    });
+    const r = await handleMessage({ type: 'GET_HAIR_STATE' });
+    if (!r.ok || !('source' in r)) throw new Error('expected hair state');
+    expect(r.source?.url).toBe('https://i.pinimg.com/cut.jpg');
+    // Garment list must remain untouched.
+    const g = await handleMessage({ type: 'GET_PENDING_GARMENTS' });
+    if (!g.ok || !('garments' in g)) throw new Error('expected garments');
+    expect(g.garments).toEqual([]);
+    // Reset for downstream tests.
+    await handleMessage({ type: 'SET_ACTIVE_TAB', tab: 'outfit' });
+    await handleMessage({ type: 'CLEAR_PENDING_HAIR_SOURCE' });
+  });
+
+  it("hover SOURCE_IMAGE_SELECTED on outfit tab still goes to garments (not hair)", async () => {
+    await handleMessage({ type: 'SET_ACTIVE_TAB', tab: 'outfit' });
+    await handleMessage({ type: 'SET_ACCESSORIES_MODE', mode: 'off' });
+    await handleMessage({
+      type: 'SOURCE_IMAGE_SELECTED',
+      url: 'https://i.pinimg.com/garment.jpg',
+      origin: 'hover',
+    });
+    const hair = await handleMessage({ type: 'GET_HAIR_STATE' });
+    if (!hair.ok || !('source' in hair)) throw new Error('expected hair state');
+    expect(hair.source).toBeNull();
+    const g = await handleMessage({ type: 'GET_PENDING_GARMENTS' });
+    if (!g.ok || !('garments' in g)) throw new Error('expected garments');
+    expect(g.garments[0]?.url).toBe('https://i.pinimg.com/garment.jpg');
   });
 
   it('rejects unknown message types', async () => {

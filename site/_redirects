@@ -1,0 +1,2 @@
+# Pretty-URL redirects removed — Cloudflare Pages serves /privacy and /terms
+# automatically from privacy.html and terms.html via its built-in pretty-URL feature.

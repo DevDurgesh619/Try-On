@@ -1,13 +1,23 @@
 import {
   ACCESSORY_FROM_IMAGE_CLAUSE,
   ACCESSORY_FROM_MODEL_CLAUSE,
+  HAIR_IN_OUTFIT_CLAUSE,
   HAIR_PROMPT,
   OUTFIT_BOTTOM_PROMPT,
   OUTFIT_FULL_PROMPT,
   OUTFIT_TOP_AND_BOTTOM_PROMPT,
   OUTFIT_TOP_PROMPT,
 } from './prompts';
-import { checkAndIncrement, type RateLimitStore } from './ratelimit';
+import {
+  decrementForGeneration,
+  nextUtcMidnightMs,
+  type Identity,
+} from './credits';
+import type { Db } from './db';
+import {
+  extractBearer,
+  verifyAccessToken,
+} from './auth';
 import type { Env } from './index';
 
 export const GEMINI_MODEL = 'gemini-3.1-flash-image-preview';
@@ -27,6 +37,11 @@ export interface AccessoryInput {
   mime: string;
 }
 
+export interface HairSourceInput {
+  image: string;
+  mime: string;
+}
+
 export interface OutfitGenerateBody {
   device_id: string;
   mode: 'outfit';
@@ -35,11 +50,9 @@ export interface OutfitGenerateBody {
   garments: GarmentInput[];
   accessoriesMode: AccessoriesMode;
   accessories?: AccessoryInput[];
-}
-
-export interface HairSourceInput {
-  image: string;
-  mime: string;
+  /** Optional hairstyle reference for the convenience hair toggle inside the
+   * outfit pipeline. The Hair tab (Mode 2) remains the higher-quality path. */
+  hair_source?: HairSourceInput;
 }
 
 export interface HairGenerateBody {
@@ -55,6 +68,10 @@ export type GenerateBody = OutfitGenerateBody | HairGenerateBody;
 export type ErrorCode =
   | 'invalid_body'
   | 'rate_limited'
+  | 'out_of_credits'
+  | 'daily_cap'
+  | 'auth_required'
+  | 'auth_expired'
   | 'gemini_safety_block'
   | 'gemini_timeout'
   | 'gemini_no_image'
@@ -88,7 +105,10 @@ export interface GeminiClient {
 
 export interface GenerateDeps {
   gemini: GeminiClient;
-  store: RateLimitStore | null;
+  /** Credits store. Null skips the credits check entirely (test-only). */
+  db: Db | null;
+  /** Worker-secret value for verifying Bearer JWTs. Empty string disables auth. */
+  jwtSecret?: string;
   now?: () => Date;
   uuid?: () => string;
   timeoutMs?: number;
@@ -141,20 +161,28 @@ export function pickPrompt(garments: GarmentInput[]): string | null {
 }
 
 /**
- * Compose the final prompt: base outfit prompt + accessory clause (if any).
- * The clause is inserted before the trailing "single image" line so the model
- * still sees that instruction last.
+ * Compose the final prompt: base outfit prompt + accessory clause (if any) +
+ * hair-in-outfit clause (if any). Clauses go in order — accessory first, then
+ * hair — matching the image-array ordering (accessories before the hair
+ * source), and all are inserted before the trailing "single image" line so
+ * the model still sees that instruction last.
  */
-export function buildPrompt(base: string, accessoriesMode: AccessoriesMode): string {
-  if (accessoriesMode === 'off') return base;
-  const clause =
-    accessoriesMode === 'model' ? ACCESSORY_FROM_MODEL_CLAUSE : ACCESSORY_FROM_IMAGE_CLAUSE;
+export function buildPrompt(
+  base: string,
+  accessoriesMode: AccessoriesMode,
+  hasHairSource = false,
+): string {
   const tail = '- The output must be a single image. Do not return text.';
+  const clauses: string[] = [];
+  if (accessoriesMode === 'model') clauses.push(ACCESSORY_FROM_MODEL_CLAUSE);
+  if (accessoriesMode === 'custom') clauses.push(ACCESSORY_FROM_IMAGE_CLAUSE);
+  if (hasHairSource) clauses.push(HAIR_IN_OUTFIT_CLAUSE);
+  if (clauses.length === 0) return base;
   if (base.endsWith(tail)) {
     const head = base.slice(0, -tail.length).trimEnd();
-    return `${head}\n\n${clause}\n\n${tail}`;
+    return `${head}\n\n${clauses.join('\n\n')}\n\n${tail}`;
   }
-  return `${base}\n\n${clause}`;
+  return `${base}\n\n${clauses.join('\n\n')}`;
 }
 
 function isAccessory(raw: unknown): raw is AccessoryInput {
@@ -185,6 +213,7 @@ function parseBody(raw: unknown): GenerateBody | null {
       ? r.accessories
       : undefined;
     if (accessoriesMode === 'custom' && (!accessories || accessories.length === 0)) return null;
+    const hair_source = isHairSource(r.hair_source) ? r.hair_source : undefined;
     return {
       device_id: r.device_id,
       mode: 'outfit',
@@ -193,6 +222,7 @@ function parseBody(raw: unknown): GenerateBody | null {
       garments: r.garments,
       accessoriesMode,
       ...(accessories && accessories.length > 0 ? { accessories } : {}),
+      ...(hair_source ? { hair_source } : {}),
     };
   }
 
@@ -235,17 +265,50 @@ export async function handleGenerate(
   const body = parseBody(raw);
   if (!body) return err('invalid_body', 'Missing or invalid fields', 400);
 
-  if (deps.store) {
-    const rl = await checkAndIncrement(deps.store, body.device_id);
-    if (!rl.allowed) {
-      const res = err(
-        'rate_limited',
-        "You've used your daily try-ons. Resets at midnight UTC.",
-        429,
+  // Identity: Bearer JWT wins over device_id. If a JWT is present but invalid,
+  // we surface auth_required/auth_expired so the client can refresh — we do
+  // NOT silently fall back to anonymous, because that would let an attacker
+  // strip auth headers to bypass per-user rate limits.
+  let identity: Identity = { kind: 'device', deviceId: body.device_id };
+  const bearer = extractBearer(request.headers);
+  if (bearer) {
+    if (!deps.jwtSecret) {
+      return err('backend_error', 'auth not configured', 500);
+    }
+    const result = await verifyAccessToken(bearer, deps.jwtSecret);
+    if (!result.ok) {
+      return err(
+        result.reason === 'expired' ? 'auth_expired' : 'auth_required',
+        result.reason === 'expired' ? 'Access token expired' : 'Invalid auth token',
+        401,
       );
-      res.headers.set('X-RateLimit-Remaining', '0');
-      res.headers.set('X-RateLimit-Reset', String(Math.floor(rl.resetEpochMs / 1000)));
-      return res;
+    }
+    identity = { kind: 'user', userId: result.claims.sub };
+  }
+
+  if (deps.db) {
+    const nowMs = (deps.now ?? ((): Date => new Date()))().getTime();
+    const ledgerId = (deps.uuid ?? crypto.randomUUID.bind(crypto))();
+    const dec = await decrementForGeneration(deps.db, identity, {
+      now: nowMs,
+      dailyResetsAt: nextUtcMidnightMs(new Date(nowMs)),
+      ledgerId,
+    });
+    if (!dec.ok) {
+      const code: ErrorCode = dec.reason === 'daily_cap' ? 'daily_cap' : 'out_of_credits';
+      const message = dec.reason === 'daily_cap'
+        ? "You've hit today's safety cap. Try again after UTC midnight."
+        : identity.kind === 'user'
+          ? "You've used all your free try-ons. Paid plans are coming soon."
+          : "You've used your 5 free try-ons on this device. Sign in with Google for 5 more free.";
+      // Telemetry: emit a single line so we can grep Cloudflare logs to count
+      // out_of_credits and daily_cap hits per build/user.
+      const build = request.headers.get('x-tryon-build') ?? '?';
+      const idStr = identity.kind === 'user'
+        ? `user=${identity.userId}`
+        : `device=${identity.deviceId}`;
+      console.info(`[tryon] paywall code=${code} ${idStr} build=${build}`);
+      return err(code, message, 402);
     }
   }
 
@@ -264,12 +327,15 @@ export async function handleGenerate(
     }
     const basePrompt = pickPrompt(ordered);
     if (!basePrompt) return err('invalid_body', 'no prompt for this garment combination', 400);
-    prompt = buildPrompt(basePrompt, body.accessoriesMode);
+    prompt = buildPrompt(basePrompt, body.accessoriesMode, !!body.hair_source);
     images = [
       { mimeType: body.reference_mime, data: body.reference_photo },
       ...ordered.map((g) => ({ mimeType: g.mime, data: g.image })),
       ...(body.accessoriesMode === 'custom' && body.accessories
         ? body.accessories.map((a) => ({ mimeType: a.mime, data: a.image }))
+        : []),
+      ...(body.hair_source
+        ? [{ mimeType: body.hair_source.mime, data: body.hair_source.image }]
         : []),
     ];
   } else {

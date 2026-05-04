@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TRY · ON — try clothes and hair on yourself, in one click</title>
+    <meta
+      name="description"
+      content="A Chrome extension. Try clothes from Myntra, Amazon, Flipkart. Try hair from Pinterest. On your photo. In one click."
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;0,900;1,400;1,500;1,700&family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <style>
+      :root {
+        --ink: #0F0F1A;
+        --bone: #FFFFFF;
+        --paper: #FFFFFF;
+        --paper-subtle: #F8F7FB;
+        --paper-warm: #FAFAFA;
+        --muted: #4A4A55;
+        --muted-soft: #7A7A88;
+        --rule: #ECEAF3;
+        --accent: #7C3AED;
+        --accent-soft: #A855F7;
+        --accent-tint: #F3EDFF;
+        --accent-ring: #C4B5FD;
+        --gradient: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+        --gradient-hover: linear-gradient(135deg, #6D28D9 0%, #9333EA 100%);
+        --serif: 'Playfair Display', 'Didot', 'Bodoni 72', 'Times New Roman', serif;
+        --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --shadow-card: 0 1px 2px rgba(15,15,26,0.04), 0 8px 24px rgba(124,58,237,0.06);
+        --shadow-card-lg: 0 4px 12px rgba(15,15,26,0.06), 0 16px 40px rgba(124,58,237,0.1);
+        --shadow-cta: 0 4px 14px rgba(124,58,237,0.35);
+        --shadow-cta-lg: 0 6px 20px rgba(124,58,237,0.45);
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: var(--sans);
+        color: var(--ink);
+        background: var(--paper);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      a { color: var(--ink); }
+      ::selection { background: var(--accent); color: #fff; }
+
+      /* Top nav */
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: saturate(140%) blur(10px);
+        -webkit-backdrop-filter: saturate(140%) blur(10px);
+        border-bottom: 1px solid var(--rule);
+      }
+      .nav-inner {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 14px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .wordmark {
+        font-family: var(--serif);
+        font-style: italic;
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .wordmark .pop { color: var(--ink); font-style: normal; }
+      .nav-links {
+        display: flex;
+        gap: 28px;
+        font-family: var(--sans);
+        font-weight: 500;
+        font-size: 13px;
+      }
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+        transition: color 200ms ease;
+      }
+      .nav-links a:hover { color: var(--accent); }
+
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        background: var(--gradient);
+        color: #fff;
+        text-decoration: none;
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        border-radius: 9999px;
+        box-shadow: var(--shadow-cta);
+        transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease;
+      }
+      .cta:hover {
+        background: var(--gradient-hover);
+        transform: translateY(-1px) scale(1.02);
+        box-shadow: var(--shadow-cta-lg);
+      }
+      .cta-large {
+        padding: 16px 28px;
+        font-size: 13px;
+        letter-spacing: 0.06em;
+      }
+
+      .cta-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 12px 20px;
+        font-family: var(--sans);
+        font-weight: 500;
+        font-size: 13px;
+        color: var(--muted);
+        text-decoration: none;
+        border-radius: 9999px;
+        transition: background 200ms ease, color 200ms ease;
+      }
+      .cta-secondary:hover {
+        background: var(--accent-tint);
+        color: var(--accent);
+      }
+
+      /* Layout */
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+
+      /* Hero */
+      .hero {
+        padding: 80px 0 64px;
+        position: relative;
+      }
+      .hero-bg {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 80% 0%, rgba(168,85,247,0.08) 0%, transparent 40%),
+          radial-gradient(circle at 0% 50%, rgba(124,58,237,0.06) 0%, transparent 35%);
+        pointer-events: none;
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 56px;
+        align-items: center;
+        position: relative;
+      }
+      .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        background: var(--accent-tint);
+        color: var(--accent);
+        border: 1px solid var(--accent-ring);
+        border-radius: 9999px;
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+      }
+      .hero h1 {
+        font-family: var(--serif);
+        font-weight: 800;
+        font-size: clamp(48px, 6.5vw, 80px);
+        line-height: 1.0;
+        letter-spacing: -0.02em;
+        margin: 0 0 24px;
+        color: var(--ink);
+      }
+      .hero h1 em {
+        font-style: italic;
+        font-weight: 700;
+        color: var(--accent);
+      }
+      .hero .lede {
+        font-family: var(--sans);
+        font-size: 17px;
+        line-height: 1.55;
+        color: var(--muted);
+        max-width: 520px;
+        margin: 0 0 32px;
+      }
+      .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      /* Hero collage tile */
+      .hero-tile {
+        position: relative;
+        background: var(--bone);
+        border: 1px solid var(--rule);
+        border-radius: 20px;
+        box-shadow: var(--shadow-card-lg);
+        padding: 16px;
+        overflow: hidden;
+      }
+      .hero-tile::before {
+        content: "";
+        position: absolute;
+        top: -40px; right: -40px;
+        width: 200px; height: 200px;
+        background: radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%);
+        pointer-events: none;
+      }
+      .hero-tile-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        position: relative;
+      }
+      .hero-tile-frame {
+        aspect-ratio: 3 / 4;
+        border-radius: 14px;
+        overflow: hidden;
+        position: relative;
+        background: var(--paper-subtle);
+      }
+      .hero-tile-frame img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .hero-tile-tag {
+        position: absolute;
+        top: 10px; left: 10px;
+        padding: 4px 10px;
+        background: rgba(15,15,26,0.78);
+        backdrop-filter: blur(6px);
+        color: #fff;
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 9px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        border-radius: 9999px;
+      }
+      .hero-tile-tag.accent { background: var(--gradient); }
+      .hero-tile-arrow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2;
+        width: 36px; height: 36px;
+        border-radius: 9999px;
+        background: var(--gradient);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow-cta);
+        font-size: 16px;
+      }
+
+      /* Brand strip */
+      .brandstrip {
+        background: var(--paper-subtle);
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        padding: 28px 0;
+      }
+      .brandstrip-inner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 36px;
+        flex-wrap: wrap;
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted-soft);
+      }
+      .brandstrip-inner span:first-child {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      /* Sections */
+      .section {
+        padding: 96px 0;
+      }
+      .section.alt { background: var(--paper-subtle); }
+
+      .feature {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 64px;
+        align-items: center;
+      }
+      .feature.reverse { direction: rtl; }
+      .feature.reverse > * { direction: ltr; }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: var(--accent-tint);
+        color: var(--accent);
+        border-radius: 9999px;
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-family: var(--serif);
+        font-weight: 700;
+        font-size: clamp(32px, 4.6vw, 48px);
+        line-height: 1.05;
+        letter-spacing: -0.015em;
+        margin: 0 0 20px;
+        color: var(--ink);
+      }
+      h2 em { font-style: italic; color: var(--accent); }
+      p {
+        font-family: var(--sans);
+        font-size: 16px;
+        line-height: 1.65;
+        color: var(--muted);
+        margin: 0 0 16px;
+        max-width: 560px;
+      }
+
+      /* Mockup tile — generic */
+      .mock {
+        background: var(--bone);
+        border: 1px solid var(--rule);
+        border-radius: 20px;
+        box-shadow: var(--shadow-card-lg);
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Feature 01 — product page mock with overlay pill */
+      .mock-product {
+        aspect-ratio: 4 / 3;
+        border-radius: 14px;
+        overflow: hidden;
+        position: relative;
+      }
+      .mock-product img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+      }
+      .mock-pill {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        padding: 8px 14px;
+        background: var(--gradient);
+        color: #fff;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        border-radius: 9999px;
+        box-shadow: var(--shadow-cta);
+        animation: pillpulse 2s ease-in-out infinite;
+      }
+      @keyframes pillpulse {
+        0%, 100% { transform: translateY(0); box-shadow: var(--shadow-cta); }
+        50% { transform: translateY(-3px); box-shadow: var(--shadow-cta-lg); }
+      }
+      .mock-cursor {
+        position: absolute;
+        bottom: 22px;
+        right: 26px;
+        font-size: 22px;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+      }
+
+      /* Feature 02 — mock side panel */
+      .mock-panel {
+        aspect-ratio: 9 / 16;
+        max-height: 480px;
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        overflow: hidden;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+      }
+      .mock-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .mock-panel-wordmark {
+        font-family: var(--serif);
+        font-weight: 800;
+        font-style: italic;
+        font-size: 18px;
+        color: var(--accent);
+      }
+      .mock-panel-wordmark .pop { color: var(--ink); font-style: normal; }
+      .mock-panel-avatar {
+        width: 28px; height: 28px;
+        border-radius: 9999px;
+        background: var(--accent-tint);
+        color: var(--accent);
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--accent-ring);
+      }
+      .mock-panel-body {
+        flex: 1;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .mock-panel-headline {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 22px;
+        line-height: 1.15;
+        color: var(--ink);
+        margin: 0;
+      }
+      .mock-panel-headline em { font-style: italic; color: var(--accent); }
+      .mock-panel-card {
+        background: var(--accent-tint);
+        border: 1px solid var(--accent-ring);
+        border-radius: 14px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mock-panel-card .square {
+        width: 44px; height: 44px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, var(--paper-subtle), var(--rule));
+      }
+      .mock-panel-card .text {
+        flex: 1;
+      }
+      .mock-panel-card .label {
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .mock-panel-card .name {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--ink);
+      }
+      .mock-panel-cta {
+        background: var(--gradient);
+        color: #fff;
+        padding: 12px;
+        text-align: center;
+        border-radius: 9999px;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-top: auto;
+      }
+      .mock-panel-tabs {
+        display: flex;
+        border-top: 1px solid var(--rule);
+        background: var(--paper);
+      }
+      .mock-panel-tab {
+        flex: 1;
+        padding: 10px 4px;
+        text-align: center;
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted-soft);
+      }
+      .mock-panel-tab.active {
+        color: var(--accent);
+      }
+      .mock-panel-tab .icon {
+        display: block;
+        margin: 0 auto 3px;
+        width: 16px;
+        height: 16px;
+      }
+      .mock-panel-tab.active .icon-bg {
+        background: var(--accent-tint);
+        border-radius: 9999px;
+        padding: 4px 10px;
+      }
+
+      /* Method (3 numbered notes — 2col with hero portrait) */
+      .method {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 56px;
+        align-items: stretch;
+      }
+      .method-notes {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .note {
+        background: var(--bone);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        padding: 18px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        box-shadow: var(--shadow-card);
+        transition: transform 200ms ease, box-shadow 200ms ease;
+      }
+      .note:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-card-lg);
+      }
+      .note-thumb {
+        width: 64px;
+        height: 84px;
+        border-radius: 10px;
+        flex-shrink: 0;
+        background: var(--paper-subtle);
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--rule);
+      }
+      .note-thumb img {
+        position: absolute;
+        inset: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+      }
+      .note-body { flex: 1; min-width: 0; }
+      .note-number {
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 6px;
+      }
+      .note p {
+        font-family: var(--serif);
+        font-size: 17px;
+        line-height: 1.45;
+        color: var(--ink);
+        margin: 0;
+        max-width: none;
+      }
+      .method-hero {
+        position: relative;
+        background: var(--paper-subtle);
+        border-radius: 20px;
+        overflow: hidden;
+        border: 1px solid var(--rule);
+        box-shadow: var(--shadow-card-lg);
+      }
+      .method-hero img {
+        display: block;
+        width: 100%; height: 100%;
+        object-fit: cover;
+      }
+      .method-hero-tag {
+        position: absolute;
+        bottom: 16px; left: 16px;
+        background: rgba(15,15,26,0.85);
+        backdrop-filter: blur(6px);
+        color: #fff;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border-radius: 9999px;
+      }
+      .method-hero-tag .pop { color: var(--accent-soft); }
+
+      /* Lookstrip */
+      .lookstrip-section {
+        padding: 64px 0;
+      }
+      .lookstrip-title {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      .lookstrip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+      }
+      .look {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .look-frame {
+        aspect-ratio: 3 / 4;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--rule);
+        background: var(--bone);
+        position: relative;
+        box-shadow: var(--shadow-card);
+        transition: transform 240ms ease, box-shadow 240ms ease;
+      }
+      .look:hover .look-frame {
+        transform: translateY(-6px);
+        box-shadow: var(--shadow-card-lg);
+      }
+      .look-frame img {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        transition: transform 600ms ease;
+      }
+      .look:hover .look-frame img { transform: scale(1.04); }
+      .look-tag {
+        position: absolute;
+        top: 12px; left: 12px;
+        z-index: 2;
+        background: var(--gradient);
+        color: #fff;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        padding: 5px 11px;
+        border-radius: 9999px;
+        box-shadow: var(--shadow-cta);
+      }
+      .look-caption {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-family: var(--sans);
+      }
+      .look-caption .num {
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .look-caption .tag {
+        font-weight: 500;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      /* Privacy block */
+      .pull {
+        display: block;
+        font-family: var(--serif);
+        font-style: italic;
+        font-weight: 500;
+        font-size: clamp(22px, 2.6vw, 28px);
+        line-height: 1.35;
+        color: var(--ink);
+        background: var(--paper-subtle);
+        border-left: 3px solid var(--accent);
+        padding: 18px 24px;
+        border-radius: 0 14px 14px 0;
+        margin: 16px 0 0;
+        max-width: 640px;
+      }
+      code {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.86em;
+        padding: 2px 7px;
+        background: var(--accent-tint);
+        border: 1px solid var(--accent-ring);
+        color: var(--accent);
+        font-weight: 600;
+        border-radius: 6px;
+      }
+
+      /* Pricing stub */
+      .pricing-card {
+        max-width: 480px;
+        margin: 24px 0 0;
+        padding: 28px;
+        background: var(--bone);
+        border: 1px solid var(--accent-ring);
+        border-radius: 20px;
+        box-shadow: var(--shadow-card-lg);
+        position: relative;
+        overflow: hidden;
+      }
+      .pricing-card::after {
+        content: "";
+        position: absolute;
+        top: -60px; right: -60px;
+        width: 220px; height: 220px;
+        background: radial-gradient(circle, rgba(168,85,247,0.16) 0%, transparent 70%);
+        pointer-events: none;
+      }
+      .pricing-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 12px;
+      }
+      .pricing-card-amount {
+        font-family: var(--serif);
+        font-weight: 700;
+        font-size: 36px;
+        color: var(--ink);
+      }
+      .pricing-card-amount em {
+        font-style: italic;
+        color: var(--accent);
+        font-size: 18px;
+        font-weight: 500;
+      }
+      .pricing-card-meta {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: var(--accent-tint);
+        padding: 4px 10px;
+        border-radius: 9999px;
+      }
+      .pricing-card p {
+        margin: 0 0 16px;
+      }
+
+      /* Install list */
+      ol.installs {
+        list-style: none;
+        counter-reset: install;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 16px;
+        max-width: 720px;
+      }
+      ol.installs li {
+        counter-increment: install;
+        position: relative;
+        padding: 18px 20px 18px 64px;
+        background: var(--bone);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        font-family: var(--serif);
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--ink);
+        box-shadow: var(--shadow-card);
+      }
+      ol.installs li::before {
+        content: counter(install, decimal-leading-zero);
+        position: absolute;
+        left: 18px;
+        top: 18px;
+        width: 32px; height: 32px;
+        border-radius: 9999px;
+        background: var(--accent-tint);
+        color: var(--accent);
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Footer */
+      footer {
+        border-top: 1px solid var(--rule);
+        padding: 32px;
+        background: var(--paper-subtle);
+      }
+      .footer-inner {
+        max-width: 1080px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--sans);
+        font-size: 12px;
+        color: var(--muted-soft);
+      }
+      .footer-inner .links a {
+        color: var(--muted);
+        text-decoration: none;
+        margin-right: 24px;
+        font-weight: 500;
+      }
+      .footer-inner .links a:hover { color: var(--accent); }
+
+      /* Responsive */
+      @media (max-width: 880px) {
+        .nav-links { display: none; }
+        .nav-inner { padding: 14px 20px; }
+        .wrap { padding: 0 20px; }
+        .hero { padding: 56px 0 40px; }
+        .section { padding: 64px 0; }
+        .hero-grid, .feature, .method, .lookstrip { grid-template-columns: 1fr; gap: 32px; }
+        .feature.reverse { direction: ltr; }
+        .method-hero { aspect-ratio: 3 / 4; }
+        .footer-inner { flex-direction: column; gap: 12px; align-items: flex-start; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; animation: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="nav-inner">
+        <a class="wordmark" href="/">TRY<span class="pop">·</span>ON</a>
+        <nav class="nav-links">
+          <a href="#method">How it works</a>
+          <a href="#pricing">Pricing</a>
+          <a href="/privacy.html">Privacy</a>
+        </nav>
+        <a class="cta" href="#install">
+          Add to Chrome
+          <span>→</span>
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="wrap hero-grid">
+          <div>
+            <span class="hero-eyebrow">★ Powered by Nano Banana 2</span>
+            <h1>The dressing room,<br /><em>rewritten.</em></h1>
+            <p class="lede">
+              Try clothes from Myntra, Amazon, Flipkart. Try hair from Pinterest. On your photo. In
+              one click. Fifteen seconds. Yours to keep.
+            </p>
+            <div class="hero-actions">
+              <a class="cta cta-large" href="#install">
+                Add to Chrome — 10 free try-ons
+                <span>→</span>
+              </a>
+              <a class="cta-secondary" href="#method">How it works</a>
+            </div>
+          </div>
+          <div class="hero-tile">
+            <div class="hero-tile-row">
+              <div class="hero-tile-frame">
+                <span class="hero-tile-tag">Pick</span>
+                <img
+                  src="https://images.pexels.com/photos/28446011/pexels-photo-28446011.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=600"
+                  alt="Reference photo"
+                  loading="lazy"
+                />
+              </div>
+              <div class="hero-tile-frame">
+                <span class="hero-tile-tag accent">Result</span>
+                <img
+                  src="https://images.pexels.com/photos/27902336/pexels-photo-27902336.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=600"
+                  alt="Try-on result"
+                  loading="lazy"
+                />
+              </div>
+              <div class="hero-tile-arrow" aria-hidden="true">→</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="brandstrip">
+        <div class="brandstrip-inner">
+          <span>Works on</span>
+          <span>Myntra</span>
+          <span>·</span>
+          <span>Amazon</span>
+          <span>·</span>
+          <span>Flipkart</span>
+          <span>·</span>
+          <span>Pinterest</span>
+          <span>·</span>
+          <span>Anywhere else</span>
+        </div>
+      </section>
+
+      <section class="section" id="method">
+        <div class="wrap">
+          <p class="eyebrow">◆ The Method</p>
+          <h2>Three steps. <em>No more.</em></h2>
+          <div class="method">
+            <div class="method-notes">
+              <div class="note">
+                <div class="note-thumb">
+                  <img
+                    src="https://images.pexels.com/photos/4510111/pexels-photo-4510111.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=300"
+                    alt="Reference photo example"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="note-body">
+                  <div class="note-number">№ 01</div>
+                  <p>Add the reference once. It stays on your device.</p>
+                </div>
+              </div>
+              <div class="note">
+                <div class="note-thumb">
+                  <img
+                    src="https://images.pexels.com/photos/8717366/pexels-photo-8717366.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=300"
+                    alt="Browsing a product"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="note-body">
+                  <div class="note-number">№ 02</div>
+                  <p>Hover any product. A small mark appears. Click.</p>
+                </div>
+              </div>
+              <div class="note">
+                <div class="note-thumb">
+                  <img
+                    src="https://images.pexels.com/photos/7659347/pexels-photo-7659347.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=300"
+                    alt="Polished result"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="note-body">
+                  <div class="note-number">№ 03</div>
+                  <p>Fifteen seconds. The result is yours to keep.</p>
+                </div>
+              </div>
+            </div>
+            <div class="method-hero">
+              <img
+                src="https://images.pexels.com/photos/27902336/pexels-photo-27902336.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
+                alt="Editorial portrait demonstrating the outcome"
+                loading="lazy"
+              />
+              <span class="method-hero-tag">
+                <span class="pop">★</span>&nbsp; The Outcome
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section alt">
+        <div class="wrap feature">
+          <div>
+            <p class="eyebrow">◆ Hover · Click</p>
+            <h2>One click, <em>on any product.</em></h2>
+            <p>
+              No tabs to switch, no screenshots to crop. Hover any image on a shopping site or
+              Pinterest pin. A small purple mark appears. Click it once — your reference photo
+              meets the garment, and the model does the rest.
+            </p>
+            <a class="cta-secondary" href="#install" style="background: var(--accent-tint); color: var(--accent);">
+              Try it free →
+            </a>
+          </div>
+          <div class="mock">
+            <div class="mock-product">
+              <img
+                src="https://images.pexels.com/photos/20695302/pexels-photo-20695302.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
+                alt="A product page on a shopping site"
+                loading="lazy"
+              />
+              <span class="mock-pill">Try on</span>
+              <span class="mock-cursor" aria-hidden="true">⤴</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap feature reverse">
+          <div>
+            <p class="eyebrow">◆ Two pipelines</p>
+            <h2>Outfit and hair, <em>in one image.</em></h2>
+            <p>
+              Pick a top from Myntra, a hairstyle from a Pinterest pin, an accessory from anywhere.
+              The slot picker keeps the flow predictable: name what the next image becomes, then
+              click. The model assembles a single photograph of you.
+            </p>
+            <a class="cta-secondary" href="#install" style="background: var(--accent-tint); color: var(--accent);">
+              See it in the panel →
+            </a>
+          </div>
+          <div class="mock" style="background: var(--paper-subtle);">
+            <div class="mock-panel">
+              <div class="mock-panel-header">
+                <span class="mock-panel-wordmark">TRY<span class="pop">·</span>ON</span>
+                <span class="mock-panel-avatar">D</span>
+              </div>
+              <div class="mock-panel-body">
+                <h3 class="mock-panel-headline">Compose your <em>try-on.</em></h3>
+                <div class="mock-panel-card">
+                  <div class="square"></div>
+                  <div class="text">
+                    <div class="label">✓ Top ready</div>
+                    <div class="name">Floral midi · Myntra</div>
+                  </div>
+                </div>
+                <div class="mock-panel-card">
+                  <div class="square"></div>
+                  <div class="text">
+                    <div class="label">✓ Hairstyle</div>
+                    <div class="name">Long curls · Pinterest</div>
+                  </div>
+                </div>
+                <div class="mock-panel-cta">Try it on →</div>
+              </div>
+              <div class="mock-panel-tabs">
+                <div class="mock-panel-tab active">
+                  <span class="icon-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M16 4l-2 2-2 1-2-1-2-2-3.5 2 1.5 4 2-1v12h8V9l2 1 1.5-4L16 4z"/></svg></span>
+                  Outfit
+                </div>
+                <div class="mock-panel-tab">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M5 13c0-5 3-9 7-9s7 4 7 9"/><circle cx="12" cy="14" r="4"/></svg>
+                  Hair
+                </div>
+                <div class="mock-panel-tab">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="icon"><circle cx="12" cy="12" r="3"/></svg>
+                  Settings
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lookstrip-section section alt">
+        <div class="wrap">
+          <div class="lookstrip-title">
+            <p class="eyebrow">◆ The Wardrobe</p>
+            <h2>Looks, <em>composed.</em></h2>
+          </div>
+          <div class="lookstrip">
+            <div class="look">
+              <div class="look-frame">
+                <span class="look-tag">Outfit</span>
+                <img
+                  src="https://images.pexels.com/photos/28446011/pexels-photo-28446011.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
+                  alt="Editorial portrait of a woman in a floral dress"
+                  loading="lazy"
+                />
+              </div>
+              <div class="look-caption">
+                <span class="num">Look 01</span>
+                <span class="tag">For Her</span>
+              </div>
+            </div>
+            <div class="look">
+              <div class="look-frame">
+                <span class="look-tag">Outfit</span>
+                <img
+                  src="https://images.pexels.com/photos/20695302/pexels-photo-20695302.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
+                  alt="Editorial portrait of a man in a hooded jacket"
+                  loading="lazy"
+                />
+              </div>
+              <div class="look-caption">
+                <span class="num">Look 02</span>
+                <span class="tag">For Him</span>
+              </div>
+            </div>
+            <div class="look">
+              <div class="look-frame">
+                <span class="look-tag">Hair</span>
+                <img
+                  src="https://images.pexels.com/photos/33896691/pexels-photo-33896691.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
+                  alt="Editorial portrait of a young man with long curly hair"
+                  loading="lazy"
+                />
+              </div>
+              <div class="look-caption">
+                <span class="num">Look 03</span>
+                <span class="tag">Hairstyle</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <p class="eyebrow">◆ On Privacy</p>
+          <h2>Your photo, <em>your machine.</em></h2>
+          <p>
+            Reference photos live in <code>chrome.storage.local</code> on your own device. We do
+            not upload, store, cache, or train on them. The single time a photo leaves your device
+            is the transient request to Google's Gemini model when you click Generate. We never
+            see the bytes.
+          </p>
+          <span class="pull">"On your machine. Period."</span>
+        </div>
+      </section>
+
+      <section class="section alt" id="pricing">
+        <div class="wrap">
+          <p class="eyebrow">◆ Pricing</p>
+          <h2>Free during beta.</h2>
+          <p>
+            Ten try-ons on the house — five anonymous, five more after a one-click Google sign-in.
+            Paid plans, coming. Drop your email in the extension and we will let you know.
+          </p>
+          <div class="pricing-card">
+            <div class="pricing-card-header">
+              <div class="pricing-card-amount">₹0 <em>/ beta</em></div>
+              <span class="pricing-card-meta">10 free try-ons</span>
+            </div>
+            <p>
+              No card. No commitment. Designed for trying it on a real shopping page and seeing
+              whether the result is worth your time.
+            </p>
+            <a class="cta cta-large" href="#install" style="display: flex; justify-content: center;">
+              Add to Chrome — Free
+              <span>→</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="install">
+        <div class="wrap">
+          <p class="eyebrow">◆ Installation Notes</p>
+          <h2>While we await Web Store review.</h2>
+          <ol class="installs">
+            <li>Download the latest <code>tryon-dist.zip</code>.</li>
+            <li>Unzip somewhere stable on your machine.</li>
+            <li>
+              Open <code>chrome://extensions</code>, enable Developer mode, click Load unpacked,
+              point at the unzipped folder.
+            </li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <div class="links">
+          <a href="/privacy.html">Privacy</a>
+          <a href="/terms.html">Terms</a>
+          <a href="mailto:support@tryon-9z6.pages.dev">Contact</a>
+          <a href="https://www.pexels.com" target="_blank" rel="noopener">Imagery · Pexels</a>
+        </div>
+        <span>© MMXXVI · TRY · ON</span>
+      </div>
+    </footer>
+  </body>
+</html>

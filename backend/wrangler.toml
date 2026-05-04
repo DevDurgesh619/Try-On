@@ -2,12 +2,24 @@ name = "tryon-dev"
 main = "src/index.ts"
 compatibility_date = "2026-04-01"
 
-[[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "b828ee47194541a3abd452cfb6291766"
+# D1 — owns users, ledger, device_free_credits, waitlist.
+# To create the DB locally, run:
+#   wrangler d1 create tryon-db
+# Paste the printed `database_id` into the placeholder below.
+[[d1_databases]]
+binding = "DB"
+database_name = "tryon-db"
+database_id = "9338e2c2-cb6f-4a99-b81b-10142eaa5702"
 
-# Secrets (set via `wrangler secret put GEMINI_API_KEY`):
-# - GEMINI_API_KEY
+# NOTE: the previous `RATE_LIMIT` KV namespace has been removed from this
+# binding list. D1 now owns all credit / cap state. The KV namespace itself
+# can be deleted from your Cloudflare account at your convenience.
+
+# Secrets (set via `wrangler secret put <NAME>`) — NEVER paste secret values here:
+#   - GEMINI_API_KEY        # Google AI Studio API key
+#   - JWT_SIGNING_KEY       # 64-byte random; access-token HMAC key
+#   - REFRESH_SIGNING_KEY   # 64-byte random; refresh-token HMAC key
+# Generate strong values with: openssl rand -base64 64
 
 [env.production]
 name = "tryon"

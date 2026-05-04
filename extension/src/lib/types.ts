@@ -3,11 +3,18 @@ export type Mode = 'outfit' | 'hair' | 'blend';
 export type GarmentSlot = 'top' | 'bottom' | 'full';
 export type AccessoriesMode = 'off' | 'model' | 'custom';
 export type OutfitType = 'full' | 'split';
+/**
+ * Which slot the next hover-click on a page should fill. The Outfit tab's
+ * UX is built around this: the user picks one slot at a time, and every
+ * "Try on" pill click lands the image in that slot. Empty slots are kept
+ * empty (= "use the reference photo's original").
+ */
+export type PendingTarget = 'full' | 'top' | 'bottom' | 'accessory' | 'hair';
 
 export interface PendingGarment {
   slot: GarmentSlot;
   url: string;
-  origin: 'auto' | 'hover' | 'context_menu';
+  origin: 'auto' | 'hover' | 'context_menu' | 'upload';
 }
 
 export interface PendingAccessory {
@@ -17,7 +24,7 @@ export interface PendingAccessory {
 
 export interface PendingHairSource {
   url: string;
-  origin: 'context_menu' | 'upload';
+  origin: 'context_menu' | 'upload' | 'hover';
 }
 
 export interface ReferencePhoto {
@@ -71,6 +78,9 @@ export interface OutfitGenerateMsg {
   accessoriesMode: AccessoriesMode;
   /** Required (and non-empty) when accessoriesMode === 'custom'. */
   accessoryUrls?: string[];
+  /** Optional convenience hairstyle reference for the Outfit pipeline. The
+   * dedicated Hair tab remains the higher-quality path. */
+  outfitHairSourceUrl?: string;
   seed?: number;
 }
 export interface HairGenerateMsg {
@@ -139,6 +149,39 @@ export interface ClearPendingHairSourceMsg {
 export interface GetHairStateMsg {
   type: 'GET_HAIR_STATE';
 }
+export interface SetPendingOutfitHairSourceMsg {
+  type: 'SET_PENDING_OUTFIT_HAIR_SOURCE';
+  source: PendingHairSource;
+}
+export interface ClearPendingOutfitHairSourceMsg {
+  type: 'CLEAR_PENDING_OUTFIT_HAIR_SOURCE';
+}
+export interface GetOutfitHairStateMsg {
+  type: 'GET_OUTFIT_HAIR_STATE';
+}
+export interface SetActiveTabMsg {
+  type: 'SET_ACTIVE_TAB';
+  tab: 'outfit' | 'hair' | 'other';
+}
+export interface SetPendingTargetMsg {
+  type: 'SET_PENDING_TARGET';
+  target: PendingTarget;
+}
+export interface SignInMsg {
+  type: 'SIGN_IN';
+}
+export interface SignOutMsg {
+  type: 'SIGN_OUT';
+}
+export interface GetAccountStateMsg {
+  type: 'GET_ACCOUNT_STATE';
+  /** When true, force a fresh /me call instead of returning cached. */
+  refresh?: boolean;
+}
+export interface JoinWaitlistMsg {
+  type: 'JOIN_WAITLIST';
+  email: string;
+}
 
 export type Message =
   | ListPhotosMsg
@@ -159,7 +202,16 @@ export type Message =
   | GetTryonStateMsg
   | SetPendingHairSourceMsg
   | ClearPendingHairSourceMsg
-  | GetHairStateMsg;
+  | GetHairStateMsg
+  | SetPendingOutfitHairSourceMsg
+  | ClearPendingOutfitHairSourceMsg
+  | GetOutfitHairStateMsg
+  | SetActiveTabMsg
+  | SetPendingTargetMsg
+  | SignInMsg
+  | SignOutMsg
+  | GetAccountStateMsg
+  | JoinWaitlistMsg;
 
 export interface ListPhotosResponse {
   ok: true;
@@ -183,15 +235,40 @@ export interface PendingGarmentsResponse {
 }
 export interface TryonStateResponse {
   ok: true;
-  outfitType: OutfitType;
+  pendingTarget: PendingTarget;
   garments: PendingGarment[];
   accessoriesMode: AccessoriesMode;
   accessories: PendingAccessory[];
+  outfitHairSource: PendingHairSource | null;
 }
 export interface HairStateResponse {
   ok: true;
   source: PendingHairSource | null;
 }
+export interface AccountState {
+  signedIn: boolean;
+  email?: string | undefined;
+  free_credits_remaining?: number | undefined;
+  paid_credits_balance?: number | undefined;
+  credits_remaining?: number | undefined;
+  daily_used?: number | undefined;
+  daily_limit?: number | undefined;
+}
+export interface AccountStateResponse {
+  ok: true;
+  account: AccountState;
+}
+export interface SignInResponse {
+  ok: true;
+  account: AccountState;
+}
+export interface SignOutResponse {
+  ok: true;
+}
+export interface JoinWaitlistResponse {
+  ok: true;
+}
+
 export interface ErrorResponse {
   ok: false;
   code:
@@ -199,10 +276,16 @@ export interface ErrorResponse {
     | 'no_reference_photo'
     | 'source_fetch_failed'
     | 'rate_limited'
+    | 'out_of_credits'
+    | 'daily_cap'
+    | 'auth_required'
+    | 'auth_expired'
+    | 'auth_failed'
     | 'gemini_safety_block'
     | 'gemini_timeout'
     | 'backend_error'
-    | 'storage_full';
+    | 'storage_full'
+    | 'invalid_email';
   message: string;
 }
 
@@ -214,4 +297,8 @@ export type MessageResponse =
   | PendingGarmentsResponse
   | TryonStateResponse
   | HairStateResponse
+  | AccountStateResponse
+  | SignInResponse
+  | SignOutResponse
+  | JoinWaitlistResponse
   | ErrorResponse;

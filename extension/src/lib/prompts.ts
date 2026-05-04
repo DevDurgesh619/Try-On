@@ -4,6 +4,22 @@ export const ACCESSORY_FROM_MODEL_CLAUSE = `Additionally, transfer any accessori
 
 export const ACCESSORY_FROM_IMAGE_CLAUSE = `Additionally, after the garment image(s), every remaining image in this request shows an ACCESSORY ITEM (e.g. a watch, glasses, belt, bag, hat, jewelry, scarf). Apply each accessory to the person from the first image, placing each one naturally where it would normally be worn (watch on wrist, glasses on face, belt at waist, etc.). Preserve every accessory's true color, material, shape, and any visible logos or details. This rule overrides any earlier instruction to keep accessories from the first image unchanged: when an accessory image is provided, that accessory takes priority over the user's accessory of the same type.`;
 
+export const HAIR_IN_OUTFIT_CLAUSE = `Additionally, this request changes the user's hairstyle as well as their outfit. The earlier instruction to "keep the user's hair exactly as in the first image" is overridden — but ONLY for the hair on the head. Every other preserved element (face, facial features, expression, skin tone, body, beard / mustache / facial hair, jewelry, background, and the clothing rules above) still applies in full.
+
+The LAST image in this request is a STYLE REFERENCE for the haircut. It is NOT a garment and NOT an accessory — do not place it on the body. Use it ONLY as a guide to the SHAPE of the cut.
+
+Take from the last image: the cut, length, layering, silhouette, parting, fringe / bangs shape, how the hair sits around the ears and neckline, the styling (straight, wavy, curly, slicked, tousled, etc.), and the relative volume.
+
+Do NOT take from the last image: its pixel colors, exposure, brightness, contrast, white balance, ambient color cast, highlight placement, specular shine, shadow direction, image grain, or the reference person's skin / scalp / head shape.
+
+Re-render the new hair from scratch as if it were freshly photographed on the user, in the user's first-image scene, under the user's first-image lighting, at the user's first-image exposure. Every strand's brightness, every highlight, every shadow must be derived from the first image's lighting environment, never from the last image's. Match the photographic sharpness and grain of the first image.
+
+Hair color: keep the user's own natural hair color from the first image as the base tone. Do NOT dye their hair just because the reference person has a different color. The only exception is when the reference style is defined by a clearly non-natural color treatment (e.g. obvious bleach blonde, dyed pink) that is plainly part of the style intent — in that case apply the treatment, but still relight it to match the first image.
+
+The new hair must conform to the user's actual head shape and hairline — drape it on their head, do not graft on the reference person's scalp. If the style includes a fringe or bangs, place them naturally over the user's forehead and re-light them onto the forehead; do not redraw the forehead skin, eyebrows, or eyes underneath.
+
+Final check: the output must look like a single photograph of the user, taken in the same lighting as their reference photo, after a real haircut and outfit change in one sitting — not a composite.`;
+
 export const HAIR_PROMPT = `You are an expert virtual hairstyle try-on system. Your job is closer to a hairstylist re-cutting and re-styling the person's own hair than to pasting a wig from another photo.
 
 The first image shows the PERSON. The second image is a STYLE REFERENCE — use it ONLY as a guide to the SHAPE of the haircut. It is not a source of pixels.

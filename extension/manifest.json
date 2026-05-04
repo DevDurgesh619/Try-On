@@ -17,12 +17,24 @@
     "sidePanel",
     "storage",
     "contextMenus",
-    "activeTab"
+    "activeTab",
+    "scripting",
+    "tabs",
+    "identity"
   ],
+  "oauth2": {
+    "client_id": "375655762689-1nstar9b0ug279lvptrftsl6fldjarti.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email"
+    ]
+  },
   "host_permissions": [
     "https://*.myntra.com/*",
     "https://*.amazon.in/*",
     "https://*.flipkart.com/*",
+    "https://*.pinterest.com/*",
+    "https://*.pinimg.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
     "https://*.workers.dev/*"
@@ -32,7 +44,8 @@
       "matches": [
         "https://*.myntra.com/*",
         "https://*.amazon.in/*",
-        "https://*.flipkart.com/*"
+        "https://*.flipkart.com/*",
+        "https://*.pinterest.com/*"
       ],
       "js": ["src/content/index.ts"],
       "run_at": "document_idle"

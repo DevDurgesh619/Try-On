@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { send } from '../messaging';
 import { getSettings, updateSettings } from '@/lib/storage';
 import type { ReferencePhoto, Settings as SettingsT } from '@/lib/types';
+import { Badge } from '../components/ui/Badge';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export function Settings(): JSX.Element {
   const [photos, setPhotos] = useState<ReferencePhoto[]>([]);
@@ -31,24 +33,31 @@ export function Settings(): JSX.Element {
   }
 
   return (
-    <main className="space-y-6 p-4">
-      <section>
-        <h2 className="text-base font-semibold">Reference photos</h2>
-        {loading ? (
-          <p className="mt-2 text-xs text-gray-500">Loading…</p>
-        ) : photos.length === 0 ? (
-          <p className="mt-2 text-xs text-gray-500">No photos yet.</p>
-        ) : (
-          <ul className="mt-2 space-y-2">
+    <main className="space-y-6 px-5 py-6">
+      <SectionHeader eyebrow="The Library" title="Reference photos." />
+      {loading ? (
+        <p className="font-mono text-meta uppercase tracking-meta text-mute">Loading · · ·</p>
+      ) : photos.length === 0 ? (
+        <EmptyState
+          eyebrow="Empty"
+          title="No photos yet."
+          body="Upload one from Onboarding. Up to four reference photos are supported."
+        />
+      ) : (
+        <div className="rounded-card bg-bone border border-rule shadow-card overflow-hidden">
+          <ul className="divide-y divide-rule">
             {photos.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 rounded border border-gray-200 p-2">
-                <img src={p.data_url} alt={p.label} className="h-12 w-12 rounded object-cover" />
-                <div className="flex-1">
-                  <div className="text-sm font-medium">{p.label}</div>
-                  <div className="text-xs text-gray-500">{p.type}</div>
+              <li key={p.id} className="flex items-center gap-4 px-4 py-3">
+                <img src={p.data_url} alt={p.label} className="h-12 w-12 object-cover rounded-sm border border-rule" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-h2 font-semibold text-ink truncate">{p.label}</div>
+                  <div className="font-sans text-caption text-mute mt-0.5">
+                    {p.type === 'face' ? 'Face' : 'Full body'}
+                  </div>
                 </div>
                 <button
-                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                  type="button"
+                  className="font-sans text-caption text-mute hover:text-accent underline underline-offset-4 decoration-rule hover:decoration-accent transition-colors duration-200"
                   onClick={(): void => void handleDelete(p.id)}
                 >
                   Delete
@@ -56,35 +65,62 @@ export function Settings(): JSX.Element {
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </div>
+      )}
 
-      <section>
-        <h2 className="text-base font-semibold">Generation</h2>
-        {settings && (
-          <label className="mt-2 flex items-start gap-2 text-xs text-gray-700">
-            <input
-              type="checkbox"
-              checked={settings.use_placeholder_images}
-              onChange={(): void => void togglePlaceholders()}
-              className="mt-0.5"
-            />
-            <span>
-              Use placeholder images (no API calls). Turn off to call the live model and burn
-              credits.
+      <SectionHeader eyebrow="Behaviour" title="Generation mode." />
+      {settings && (
+        <div className="rounded-card bg-bone border border-rule shadow-card p-4">
+          <button
+            type="button"
+            onClick={(): void => void togglePlaceholders()}
+            className="flex w-full items-start justify-between gap-3 text-left"
+          >
+            <span className="flex-1 min-w-0">
+              <span className="block font-display text-h2 font-semibold text-ink">Use placeholder images</span>
+              <span className="block font-sans text-caption text-mute mt-0.5">
+                No API calls. Turn off to call the live model and burn credits.
+              </span>
             </span>
-          </label>
-        )}
-      </section>
+            <span
+              className={[
+                'shrink-0 mt-1 relative inline-block h-5 w-9 rounded-pill transition-colors duration-200 ease-editorial',
+                settings.use_placeholder_images ? 'bg-accent' : 'bg-rule',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'absolute top-0.5 h-4 w-4 rounded-pill bg-bone shadow-card transition-all duration-200 ease-editorial',
+                  settings.use_placeholder_images ? 'left-[18px]' : 'left-0.5',
+                ].join(' ')}
+              />
+            </span>
+          </button>
+        </div>
+      )}
 
-      <section>
-        <h2 className="text-base font-semibold">Privacy</h2>
-        <p className="mt-1 text-xs text-gray-600">
-          Reference photos live in your browser&apos;s local storage. They are sent to the TryOn
+      <SectionHeader eyebrow="A Note" title="Where your photos live." />
+      <div className="rounded-card bg-paper-subtle border border-rule p-4">
+        <blockquote className="border-l-2 border-accent pl-4 font-display italic text-h2 text-mute">
+          Reference photos live in your browser&apos;s local storage. They are sent to the TRY · ON
           backend only as inline data inside a single generation request, then discarded. We do not
           store, log, or share your photos.
-        </p>
-      </section>
+        </blockquote>
+      </div>
     </main>
+  );
+}
+
+interface SectionHeaderProps {
+  eyebrow: string;
+  title: string;
+}
+
+function SectionHeader({ eyebrow, title }: SectionHeaderProps): JSX.Element {
+  return (
+    <div className="space-y-1.5">
+      <Badge tone="signal">◆ {eyebrow}</Badge>
+      <h2 className="font-display text-display-lg font-semibold text-ink">{title}</h2>
+    </div>
   );
 }

@@ -12,24 +12,17 @@ import {
 import {
   ACCESSORY_FROM_IMAGE_CLAUSE,
   ACCESSORY_FROM_MODEL_CLAUSE,
+  HAIR_IN_OUTFIT_CLAUSE,
   HAIR_PROMPT,
   OUTFIT_BOTTOM_PROMPT,
   OUTFIT_FULL_PROMPT,
   OUTFIT_TOP_AND_BOTTOM_PROMPT,
   OUTFIT_TOP_PROMPT,
 } from './prompts';
-import { type RateLimitStore } from './ratelimit';
+import { createMemoryDb } from './db.test-helpers';
+import { ANON_FREE_CREDITS } from './db';
 
 const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-
-class MemStore implements RateLimitStore {
-  private c = new Map<string, number>();
-  async incr(key: string): Promise<number> {
-    const n = (this.c.get(key) ?? 0) + 1;
-    this.c.set(key, n);
-    return n;
-  }
-}
 
 function makeGemini(parts: GeminiPart[]): GeminiClient {
   return { generate: vi.fn(async () => parts) };
@@ -120,7 +113,7 @@ describe('/generate', () => {
   it('rejects missing fields', async () => {
     const res = await handle(post({ device_id: 'd' }), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([]),
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { code: string };
@@ -130,7 +123,7 @@ describe('/generate', () => {
   it('rejects modes other than outfit in v1', async () => {
     const res = await handle(post({ ...(validBody() as object), mode: 'hair' }), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]),
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(400);
   });
@@ -138,7 +131,7 @@ describe('/generate', () => {
   it('rejects invalid garment combos at the route level', async () => {
     const res = await handle(post(validBody('d', [garment('top'), garment('top')])), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]),
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { code: string };
@@ -152,7 +145,7 @@ describe('/generate', () => {
     ]);
     const res = await handle(post(validBody()), { GEMINI_API_KEY: 'k' }, {
       gemini: gem,
-      store: null,
+      db: null,
       uuid: () => 'gen-uuid',
     });
     expect(res.status).toBe(200);
@@ -168,7 +161,7 @@ describe('/generate', () => {
     await handle(
       post(validBody('d', [garment('bottom', 'BOT'), garment('top', 'TOP')])),
       { GEMINI_API_KEY: 'k' },
-      { gemini: gem, store: null },
+      { gemini: gem, db: null },
     );
     expect(gen).toHaveBeenCalledOnce();
     const call = (gen.mock.calls[0] as unknown as [unknown])[0] as { images: { data: string }[]; prompt: string };
@@ -180,7 +173,7 @@ describe('/generate', () => {
     const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
     await handle(post(validBody('d', [garment('top', 'T')])), { GEMINI_API_KEY: 'k' }, {
       gemini: { generate: gen },
-      store: null,
+      db: null,
     });
     const call = (gen.mock.calls[0] as unknown as [unknown])[0] as { prompt: string };
     expect(call.prompt).toBe(OUTFIT_TOP_PROMPT);
@@ -190,7 +183,7 @@ describe('/generate', () => {
     const gem = makeGemini([{ text: 'Blocked due to safety policy' }]);
     const res = await handle(post(validBody()), { GEMINI_API_KEY: 'k' }, {
       gemini: gem,
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(422);
     const body = (await res.json()) as { code: string };
@@ -210,7 +203,7 @@ describe('/generate', () => {
     };
     const res = await handle(post(validBody()), { GEMINI_API_KEY: 'k' }, {
       gemini: gem,
-      store: null,
+      db: null,
       timeoutMs: 10,
     });
     expect(res.status).toBe(504);
@@ -218,27 +211,25 @@ describe('/generate', () => {
     expect(body.code).toBe('gemini_timeout');
   });
 
-  it('rate-limits the (DAILY_LIMIT+1)th request from the same device in a UTC day', async () => {
-    const { DAILY_LIMIT } = await import('./ratelimit');
-    const store = new MemStore();
+  it('anonymous device gets ANON_FREE_CREDITS, then out_of_credits on the next request', async () => {
+    const { db } = createMemoryDb();
     const gem = makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
     const env = { GEMINI_API_KEY: 'k' };
-    for (let i = 0; i < DAILY_LIMIT; i++) {
-      const r = await handle(post(validBody('dev-rl')), env, { gemini: gem, store });
+    for (let i = 0; i < ANON_FREE_CREDITS; i++) {
+      const r = await handle(post(validBody('dev-rl')), env, { gemini: gem, db });
       expect(r.status).toBe(200);
     }
-    const overflow = await handle(post(validBody('dev-rl')), env, { gemini: gem, store });
-    expect(overflow.status).toBe(429);
-    expect(overflow.headers.get('X-RateLimit-Remaining')).toBe('0');
+    const overflow = await handle(post(validBody('dev-rl')), env, { gemini: gem, db });
+    expect(overflow.status).toBe(402);
     const body = (await overflow.json()) as { code: string };
-    expect(body.code).toBe('rate_limited');
+    expect(body.code).toBe('out_of_credits');
   });
 
   it("rejects accessoriesMode='custom' without any accessory images", async () => {
     const body = { ...(validBody() as Record<string, unknown>), accessoriesMode: 'custom' };
     const res = await handle(post(body), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]),
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(400);
     const j = (await res.json()) as { code: string };
@@ -253,7 +244,7 @@ describe('/generate', () => {
     };
     const res = await handle(post(body), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]),
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(400);
   });
@@ -265,7 +256,7 @@ describe('/generate', () => {
       accessoriesMode: 'custom',
       accessories: [{ image: 'ACC', mime: 'image/jpeg' }],
     };
-    await handle(post(body), { GEMINI_API_KEY: 'k' }, { gemini: { generate: gen }, store: null });
+    await handle(post(body), { GEMINI_API_KEY: 'k' }, { gemini: { generate: gen }, db: null });
     const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
       images: { data: string }[];
       prompt: string;
@@ -285,7 +276,7 @@ describe('/generate', () => {
         { image: 'BAG', mime: 'image/jpeg' },
       ],
     };
-    await handle(post(body), { GEMINI_API_KEY: 'k' }, { gemini: { generate: gen }, store: null });
+    await handle(post(body), { GEMINI_API_KEY: 'k' }, { gemini: { generate: gen }, db: null });
     const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
       images: { data: string }[];
     };
@@ -295,7 +286,7 @@ describe('/generate', () => {
   it("'model' mode does not append any accessory image but does append the clause", async () => {
     const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
     const body = { ...(validBody() as Record<string, unknown>), accessoriesMode: 'model' };
-    await handle(post(body), { GEMINI_API_KEY: 'k' }, { gemini: { generate: gen }, store: null });
+    await handle(post(body), { GEMINI_API_KEY: 'k' }, { gemini: { generate: gen }, db: null });
     const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
       images: { data: string }[];
       prompt: string;
@@ -326,7 +317,7 @@ describe('/generate (hair mode)', () => {
     delete body.hair_source;
     const res = await handle(post(body), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]),
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(400);
     const j = (await res.json()) as { code: string };
@@ -337,7 +328,7 @@ describe('/generate (hair mode)', () => {
     const body = { ...(hairBody() as Record<string, unknown>), mode: 'blend' };
     const res = await handle(post(body), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]),
-      store: null,
+      db: null,
     });
     expect(res.status).toBe(400);
   });
@@ -346,7 +337,7 @@ describe('/generate (hair mode)', () => {
     const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
     await handle(post(hairBody()), { GEMINI_API_KEY: 'k' }, {
       gemini: { generate: gen },
-      store: null,
+      db: null,
     });
     const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
       images: { data: string }[];
@@ -359,7 +350,7 @@ describe('/generate (hair mode)', () => {
   it('hair mode returns the generated image like outfit mode', async () => {
     const res = await handle(post(hairBody()), { GEMINI_API_KEY: 'k' }, {
       gemini: makeGemini([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]),
-      store: null,
+      db: null,
       uuid: () => 'gen-h',
     });
     expect(res.status).toBe(200);
@@ -367,6 +358,120 @@ describe('/generate (hair mode)', () => {
     expect(j.ok).toBe(true);
     expect(j.image).toBe(PNG_B64);
     expect(j.generation_id).toBe('gen-h');
+  });
+});
+
+describe('/generate (outfit + hair source)', () => {
+  function outfitHairBody(extra: Record<string, unknown> = {}): unknown {
+    return {
+      ...(validBody() as Record<string, unknown>),
+      hair_source: { image: 'CUT', mime: 'image/jpeg' },
+      ...extra,
+    };
+  }
+
+  it('appends the hair source as the LAST image (after the reference + garment)', async () => {
+    const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
+    await handle(post(outfitHairBody()), { GEMINI_API_KEY: 'k' }, {
+      gemini: { generate: gen },
+      db: null,
+    });
+    const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
+      images: { data: string }[];
+      prompt: string;
+    };
+    expect(call.images.map((i) => i.data)).toEqual(['AA', 'BB', 'CUT']);
+    expect(call.prompt).toContain(HAIR_IN_OUTFIT_CLAUSE);
+    expect(call.prompt.endsWith('- The output must be a single image. Do not return text.')).toBe(true);
+  });
+
+  it('hair clause comes AFTER the accessory clause when both present, and accessory image comes BEFORE hair image', async () => {
+    const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
+    await handle(
+      post(outfitHairBody({
+        accessoriesMode: 'custom',
+        accessories: [{ image: 'WATCH', mime: 'image/jpeg' }],
+      })),
+      { GEMINI_API_KEY: 'k' },
+      { gemini: { generate: gen }, db: null },
+    );
+    const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
+      images: { data: string }[];
+      prompt: string;
+    };
+    expect(call.images.map((i) => i.data)).toEqual(['AA', 'BB', 'WATCH', 'CUT']);
+    const accIdx = call.prompt.indexOf(ACCESSORY_FROM_IMAGE_CLAUSE);
+    const hairIdx = call.prompt.indexOf(HAIR_IN_OUTFIT_CLAUSE);
+    expect(accIdx).toBeGreaterThan(-1);
+    expect(hairIdx).toBeGreaterThan(accIdx);
+  });
+
+  it('hair_source works alongside accessoriesMode=model (clause but no extra image)', async () => {
+    const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
+    await handle(
+      post(outfitHairBody({ accessoriesMode: 'model' })),
+      { GEMINI_API_KEY: 'k' },
+      { gemini: { generate: gen }, db: null },
+    );
+    const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
+      images: { data: string }[];
+      prompt: string;
+    };
+    expect(call.images.map((i) => i.data)).toEqual(['AA', 'BB', 'CUT']);
+    expect(call.prompt).toContain(ACCESSORY_FROM_MODEL_CLAUSE);
+    expect(call.prompt).toContain(HAIR_IN_OUTFIT_CLAUSE);
+  });
+
+  it('without hair_source the prompt does NOT contain the hair clause and image count is unchanged', async () => {
+    const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
+    await handle(post(validBody()), { GEMINI_API_KEY: 'k' }, {
+      gemini: { generate: gen },
+      db: null,
+    });
+    const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
+      images: { data: string }[];
+      prompt: string;
+    };
+    expect(call.images).toHaveLength(2);
+    expect(call.prompt).not.toContain(HAIR_IN_OUTFIT_CLAUSE);
+  });
+
+  it('rejects a malformed hair_source on outfit body (silently drops, prompt has no hair clause)', async () => {
+    const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
+    const body = { ...(validBody() as Record<string, unknown>), hair_source: { image: '' } };
+    await handle(post(body), { GEMINI_API_KEY: 'k' }, {
+      gemini: { generate: gen },
+      db: null,
+    });
+    const call = (gen.mock.calls[0] as unknown as [unknown])[0] as { prompt: string };
+    expect(call.prompt).not.toContain(HAIR_IN_OUTFIT_CLAUSE);
+  });
+
+  it('two-garment outfit + hair_source orders images [ref, top, bottom, hair]', async () => {
+    const gen = vi.fn(async () => [{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
+    const body = {
+      ...(validBody('d', [garment('bottom', 'BOT'), garment('top', 'TOP')]) as Record<string, unknown>),
+      hair_source: { image: 'CUT', mime: 'image/jpeg' },
+    };
+    await handle(post(body), { GEMINI_API_KEY: 'k' }, { gemini: { generate: gen }, db: null });
+    const call = (gen.mock.calls[0] as unknown as [unknown])[0] as {
+      images: { data: string }[];
+    };
+    expect(call.images.map((i) => i.data)).toEqual(['AA', 'TOP', 'BOT', 'CUT']);
+  });
+});
+
+describe('buildPrompt (hair-in-outfit)', () => {
+  it('appends only hair clause when accessoriesMode=off and hasHairSource=true', () => {
+    const out = buildPrompt(OUTFIT_FULL_PROMPT, 'off', true);
+    expect(out).toContain(HAIR_IN_OUTFIT_CLAUSE);
+    expect(out).not.toContain(ACCESSORY_FROM_MODEL_CLAUSE);
+    expect(out).not.toContain(ACCESSORY_FROM_IMAGE_CLAUSE);
+    expect(out.endsWith('- The output must be a single image. Do not return text.')).toBe(true);
+  });
+  it('omits hair clause when hasHairSource=false (default)', () => {
+    expect(buildPrompt(OUTFIT_FULL_PROMPT, 'off')).toBe(OUTFIT_FULL_PROMPT);
+    expect(buildPrompt(OUTFIT_FULL_PROMPT, 'model')).not.toContain(HAIR_IN_OUTFIT_CLAUSE);
   });
 });
 

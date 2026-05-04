@@ -130,3 +130,16 @@ For each case verify:
 5. **Reference fallback** — delete face photos under Settings, ensure full-body photos are picked up by the Hair tab (with a yellow tip at the top suggesting a face photo). Generate still runs.
 6. **Tab independence** — pick a garment on the Outfit tab, then switch to Hair, pick a hairstyle, switch back. Garment state remains intact.
 7. **Worker logs** — terminal shows a single `POST /generate` with body `{ mode: 'hair', reference_photo, hair_source, ... }` — no `garments` / `accessoriesMode` fields.
+
+## Mode 1 v4 — outfit + optional hairstyle (D13)
+
+### Automated
+`backend/src/generate.test.ts` covers `buildPrompt(base, mode, hasHairSource=true)` for all combos, asserts that the hair source is the LAST image in the request, and that the hair clause appears AFTER the accessory clause when both are present. `extension/src/background/router.test.ts` covers `SET_PENDING_OUTFIT_HAIR_SOURCE` round-trip, the new `outfitHairSource` field in `GET_TRYON_STATE`, and that outfit GENERATE forwards `hair_source` to the backend payload only when present.
+
+### Manual smoke (run on Pinterest + Myntra together)
+1. **Outfit + hair via right-click** — Open the side panel on Outfit. On a Myntra product page, right-click the product → `Try this on with TryOn`. Then open Pinterest, find a hairstyle, right-click → `Use this hairstyle in TryOn`. The Outfit tab's hairstyle card should now show the thumbnail (NOT the Hair tab). Generate. Result shows the user wearing the new outfit AND with the new hairstyle. Worker payload contains `garments: [...]` and `hair_source: { image, mime }` as the LAST image.
+2. **Outfit + hair via upload** — In the Outfit tab's hairstyle card, use the file input to upload a local hairstyle image. Generate; same expectation.
+3. **Hair tab still works** — Click the Hair tab, right-click another hairstyle. It lands in the Hair tab's source, NOT the Outfit tab's. Generate from the Hair tab. Worker payload is `mode: 'hair'`, no `garments` / `accessoriesMode`.
+4. **Tab independence** — set up an outfit + outfit hair source on the Outfit tab. Switch to Hair, set a different hair source. Switch back to Outfit. The Outfit hair source is still the original; the two states don't bleed into each other.
+5. **Switch-to-Hair link** — when the Outfit hair source is set, the card shows a "Switch to the Hair tab" link. Clicking it navigates to `/hair` and the Outfit hair source remains intact for when the user comes back.
+6. **Worker terminal** — on a combined try-on, log shows a single `POST /generate` whose `images` array has the order `[reference, garment(s), accessor(ies)?, hair_source]`. The `prompt` text contains both the relevant accessory clause (if used) and the `HAIR_IN_OUTFIT_CLAUSE` body.
