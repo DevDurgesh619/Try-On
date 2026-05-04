@@ -256,7 +256,7 @@ export function Hair(): JSX.Element {
       )}
 
       {phase === 'idle' && (
-        <section className="space-y-3 sticky bottom-[76px] -mx-5 px-5 pt-3 pb-4 bg-paper border-t border-rule">
+        <section className="space-y-3 -mx-5 px-5 pt-4 border-t border-rule">
           <Button variant="primary" size="md" fullWidth disabled={!canGenerate} onClick={(): void => void generate()}>
             Try this hairstyle
             {canGenerate && (

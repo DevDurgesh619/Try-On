@@ -364,14 +364,22 @@
 
       /* Feature 01 — product page mock with overlay pill */
       .mock-product {
-        aspect-ratio: 4 / 3;
+        aspect-ratio: 3 / 4;
         border-radius: 14px;
         overflow: hidden;
         position: relative;
+        background: var(--paper-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .mock-product img {
-        width: 100%; height: 100%;
-        object-fit: cover;
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
       }
       .mock-pill {
         position: absolute;
@@ -695,6 +703,189 @@
         color: var(--muted);
       }
 
+      /* Recipe — Feature 02 layout showing 4 inputs + 1 output */
+      .recipe {
+        margin-top: 36px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) auto minmax(0, 1fr);
+        gap: 28px;
+        align-items: center;
+      }
+      .recipe-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        position: relative;
+      }
+      .recipe-card {
+        background: var(--bone);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        overflow: hidden;
+        aspect-ratio: 1 / 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px 14px 32px;
+        box-shadow: var(--shadow-card);
+        transition: transform 200ms ease, box-shadow 200ms ease;
+      }
+      .recipe-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-card-lg);
+      }
+      .recipe-card img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+      }
+      .recipe-card-tag {
+        position: absolute;
+        bottom: 10px; left: 10px; right: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .recipe-card-tag .num {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .recipe-card-tag .label {
+        color: var(--muted);
+      }
+      .recipe-plus {
+        position: absolute;
+        z-index: 2;
+        width: 28px; height: 28px;
+        border-radius: 9999px;
+        background: var(--gradient);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 16px;
+        box-shadow: var(--shadow-cta);
+      }
+      .recipe-plus.tl { top: calc(50% - 14px); left: calc(50% - 14px); }
+      .recipe-arrow {
+        font-family: var(--serif);
+        font-weight: 900;
+        font-size: 56px;
+        line-height: 1;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .recipe-output {
+        position: relative;
+        background: var(--bone);
+        border: 1px solid var(--accent-ring);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: var(--shadow-card-lg);
+        aspect-ratio: 3 / 4;
+      }
+      .recipe-output img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .recipe-output-tag {
+        position: absolute;
+        top: 12px; left: 12px;
+        z-index: 2;
+        background: var(--gradient);
+        color: #fff;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        padding: 5px 11px;
+        border-radius: 9999px;
+        box-shadow: var(--shadow-cta);
+      }
+      .recipe-output-caption {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        padding: 32px 16px 16px;
+        background: linear-gradient(0deg, rgba(15,15,26,0.78) 0%, rgba(15,15,26,0) 100%);
+        color: #fff;
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 18px;
+        line-height: 1.25;
+      }
+      @media (max-width: 880px) {
+        .recipe {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+        .recipe-arrow {
+          font-size: 36px;
+          transform: rotate(90deg);
+        }
+      }
+
+      /* Hair before/after diptych — landscape card with two portrait halves side-by-side */
+      .look-frame.diptych {
+        aspect-ratio: 3 / 2;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+      }
+      .look-frame.diptych .half {
+        position: relative;
+        overflow: hidden;
+        background: var(--paper-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+      }
+      .look-frame.diptych .half + .half {
+        border-left: 1px solid var(--rule);
+        background: var(--bone);
+      }
+      .look-frame.diptych .half img {
+        position: relative;
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+      }
+      .look-frame.diptych .half-tag {
+        position: absolute;
+        top: 10px; left: 10px;
+        z-index: 2;
+        padding: 4px 10px;
+        background: rgba(15,15,26,0.78);
+        backdrop-filter: blur(6px);
+        color: #fff;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        border-radius: 9999px;
+      }
+      .look-frame.diptych .half-tag.accent { background: var(--gradient); }
+
       /* Privacy block */
       .pull {
         display: block;
@@ -896,18 +1087,18 @@
           <div class="hero-tile">
             <div class="hero-tile-row">
               <div class="hero-tile-frame">
-                <span class="hero-tile-tag">Pick</span>
+                <span class="hero-tile-tag">Your photo</span>
                 <img
-                  src="https://images.pexels.com/photos/28446011/pexels-photo-28446011.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=600"
-                  alt="Reference photo"
+                  src="/img/ref-fullbody.jpeg"
+                  alt="Reference photo of the user on a balcony"
                   loading="lazy"
                 />
               </div>
               <div class="hero-tile-frame">
-                <span class="hero-tile-tag accent">Result</span>
+                <span class="hero-tile-tag accent">Try-on</span>
                 <img
-                  src="https://images.pexels.com/photos/27902336/pexels-photo-27902336.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=600"
-                  alt="Try-on result"
+                  src="/img/hero-output.png"
+                  alt="Try-on result — the user wearing a beige kurta"
                   loading="lazy"
                 />
               </div>
@@ -941,8 +1132,8 @@
               <div class="note">
                 <div class="note-thumb">
                   <img
-                    src="https://images.pexels.com/photos/4510111/pexels-photo-4510111.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=300"
-                    alt="Reference photo example"
+                    src="/img/ref-fullbody.jpeg"
+                    alt="Reference photo of the user — full body"
                     loading="lazy"
                   />
                 </div>
@@ -954,8 +1145,8 @@
               <div class="note">
                 <div class="note-thumb">
                   <img
-                    src="https://images.pexels.com/photos/8717366/pexels-photo-8717366.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=300"
-                    alt="Browsing a product"
+                    src="/img/src-kurta.png"
+                    alt="A kurta on a Myntra product page"
                     loading="lazy"
                   />
                 </div>
@@ -967,8 +1158,8 @@
               <div class="note">
                 <div class="note-thumb">
                   <img
-                    src="https://images.pexels.com/photos/7659347/pexels-photo-7659347.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=300"
-                    alt="Polished result"
+                    src="/img/out-kurta.png"
+                    alt="The result — the user wearing the kurta"
                     loading="lazy"
                   />
                 </div>
@@ -980,8 +1171,8 @@
             </div>
             <div class="method-hero">
               <img
-                src="https://images.pexels.com/photos/27902336/pexels-photo-27902336.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
-                alt="Editorial portrait demonstrating the outcome"
+                src="/img/out-kurta.png"
+                alt="Showcase try-on — the user wearing a pink kurta in the same balcony setting"
                 loading="lazy"
               />
               <span class="method-hero-tag">
@@ -1009,8 +1200,8 @@
           <div class="mock">
             <div class="mock-product">
               <img
-                src="https://images.pexels.com/photos/20695302/pexels-photo-20695302.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
-                alt="A product page on a shopping site"
+                src="/img/src-stripe-shirt.png"
+                alt="A floral midi dress on a Myntra-style product page"
                 loading="lazy"
               />
               <span class="mock-pill">Try on</span>
@@ -1021,57 +1212,50 @@
       </section>
 
       <section class="section">
-        <div class="wrap feature reverse">
-          <div>
+        <div class="wrap">
+          <div style="max-width: 720px;">
             <p class="eyebrow">◆ Two pipelines</p>
             <h2>Outfit and hair, <em>in one image.</em></h2>
             <p>
-              Pick a top from Myntra, a hairstyle from a Pinterest pin, an accessory from anywhere.
-              The slot picker keeps the flow predictable: name what the next image becomes, then
-              click. The model assembles a single photograph of you.
+              Pick a top from Myntra, jeans from another model, a hairstyle from a Pinterest pin —
+              compose every piece in the side panel and let the model assemble a single photograph
+              of you. No tab-switching. No collage. One result.
             </p>
             <a class="cta-secondary" href="#install" style="background: var(--accent-tint); color: var(--accent);">
               See it in the panel →
             </a>
           </div>
-          <div class="mock" style="background: var(--paper-subtle);">
-            <div class="mock-panel">
-              <div class="mock-panel-header">
-                <span class="mock-panel-wordmark">TRY<span class="pop">·</span>ON</span>
-                <span class="mock-panel-avatar">D</span>
+
+          <div class="recipe">
+            <div class="recipe-inputs">
+              <div class="recipe-card">
+                <img src="/img/ref-tilt.jpeg" alt="Your reference photo — tilted pose" loading="lazy" />
+                <div class="recipe-card-tag"><span class="num">№ 01</span><span class="label">You</span></div>
               </div>
-              <div class="mock-panel-body">
-                <h3 class="mock-panel-headline">Compose your <em>try-on.</em></h3>
-                <div class="mock-panel-card">
-                  <div class="square"></div>
-                  <div class="text">
-                    <div class="label">✓ Top ready</div>
-                    <div class="name">Floral midi · Myntra</div>
-                  </div>
-                </div>
-                <div class="mock-panel-card">
-                  <div class="square"></div>
-                  <div class="text">
-                    <div class="label">✓ Hairstyle</div>
-                    <div class="name">Long curls · Pinterest</div>
-                  </div>
-                </div>
-                <div class="mock-panel-cta">Try it on →</div>
+              <div class="recipe-card">
+                <img src="/img/src-checked.png" alt="A checked shirt — top from a Myntra model" loading="lazy" />
+                <div class="recipe-card-tag"><span class="num">№ 02</span><span class="label">Top</span></div>
               </div>
-              <div class="mock-panel-tabs">
-                <div class="mock-panel-tab active">
-                  <span class="icon-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M16 4l-2 2-2 1-2-1-2-2-3.5 2 1.5 4 2-1v12h8V9l2 1 1.5-4L16 4z"/></svg></span>
-                  Outfit
-                </div>
-                <div class="mock-panel-tab">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M5 13c0-5 3-9 7-9s7 4 7 9"/><circle cx="12" cy="14" r="4"/></svg>
-                  Hair
-                </div>
-                <div class="mock-panel-tab">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="icon"><circle cx="12" cy="12" r="3"/></svg>
-                  Settings
-                </div>
+              <div class="recipe-card">
+                <img src="/img/src-jeans.png" alt="Jeans from another model" loading="lazy" />
+                <div class="recipe-card-tag"><span class="num">№ 03</span><span class="label">Bottom</span></div>
               </div>
+              <div class="recipe-card">
+                <img src="/img/src-haircut-bw.png" alt="Hairstyle inspiration — textured spiky quiff" loading="lazy" />
+                <div class="recipe-card-tag"><span class="num">№ 04</span><span class="label">Haircut</span></div>
+              </div>
+              <div class="recipe-plus tl" aria-hidden="true">+</div>
+            </div>
+
+            <div class="recipe-arrow" aria-hidden="true">→</div>
+
+            <div class="recipe-output">
+              <span class="recipe-output-tag">Result · One photo</span>
+              <img
+                src="/img/out-checked-fullbody.png"
+                alt="The composed try-on — the user wearing the checked shirt, jeans, sunglasses, and the new haircut"
+                loading="lazy"
+              />
             </div>
           </div>
         </div>
@@ -1081,49 +1265,112 @@
         <div class="wrap">
           <div class="lookstrip-title">
             <p class="eyebrow">◆ The Wardrobe</p>
-            <h2>Looks, <em>composed.</em></h2>
+            <h2>Outfits, <em>composed.</em></h2>
           </div>
           <div class="lookstrip">
             <div class="look">
               <div class="look-frame">
-                <span class="look-tag">Outfit</span>
+                <span class="look-tag">Kurta</span>
                 <img
-                  src="https://images.pexels.com/photos/28446011/pexels-photo-28446011.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
-                  alt="Editorial portrait of a woman in a floral dress"
+                  src="/img/out-kurta.png"
+                  alt="Try-on result — pink kurta on the user, full body"
                   loading="lazy"
                 />
               </div>
               <div class="look-caption">
                 <span class="num">Look 01</span>
-                <span class="tag">For Her</span>
+                <span class="tag">Top + Bottom</span>
               </div>
             </div>
             <div class="look">
               <div class="look-frame">
-                <span class="look-tag">Outfit</span>
+                <span class="look-tag">Outfit + Accessories</span>
                 <img
-                  src="https://images.pexels.com/photos/20695302/pexels-photo-20695302.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
-                  alt="Editorial portrait of a man in a hooded jacket"
+                  src="/img/out-grayshirt.png"
+                  alt="Try-on result — gray shirt with sunglasses on the user"
                   loading="lazy"
                 />
               </div>
               <div class="look-caption">
                 <span class="num">Look 02</span>
-                <span class="tag">For Him</span>
+                <span class="tag">Model accessories on</span>
               </div>
             </div>
             <div class="look">
               <div class="look-frame">
-                <span class="look-tag">Hair</span>
+                <span class="look-tag">Outfit + Hair</span>
                 <img
-                  src="https://images.pexels.com/photos/33896691/pexels-photo-33896691.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900"
-                  alt="Editorial portrait of a young man with long curly hair"
+                  src="/img/out-checked-fullbody.png"
+                  alt="Try-on result — checked shirt, jeans, sunglasses, fresh haircut, full body"
                   loading="lazy"
                 />
               </div>
               <div class="look-caption">
                 <span class="num">Look 03</span>
-                <span class="tag">Hairstyle</span>
+                <span class="tag">Everything at once</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lookstrip-section section">
+        <div class="wrap">
+          <div class="lookstrip-title">
+            <p class="eyebrow">◆ The Salon</p>
+            <h2>Hair, <em>previewed.</em></h2>
+            <p style="margin: 12px auto 0; text-align: center; max-width: 520px;">
+              Pick a haircut from a Pinterest pin or a celebrity photo. Your face, your beard, your
+              clothes, your room — all preserved. Only the hair changes.
+            </p>
+          </div>
+          <div class="lookstrip">
+            <div class="look">
+              <div class="look-frame diptych">
+                <div class="half">
+                  <span class="half-tag">Inspiration</span>
+                  <img src="/img/src-hair-1.png" alt="Hairstyle inspiration — textured spiky quiff" loading="lazy" />
+                </div>
+                <div class="half">
+                  <span class="half-tag accent">On you</span>
+                  <img src="/img/out-hair-1.png" alt="Result — the user with the textured spiky quiff" loading="lazy" />
+                </div>
+              </div>
+              <div class="look-caption">
+                <span class="num">Hair 01</span>
+                <span class="tag">Textured quiff</span>
+              </div>
+            </div>
+            <div class="look">
+              <div class="look-frame diptych">
+                <div class="half">
+                  <span class="half-tag">Inspiration</span>
+                  <img src="/img/src-hair-3.png" alt="Hairstyle inspiration — clean classic short cut" loading="lazy" />
+                </div>
+                <div class="half">
+                  <span class="half-tag accent">On you</span>
+                  <img src="/img/out-hair-3.png" alt="Result — the user with the classic short cut" loading="lazy" />
+                </div>
+              </div>
+              <div class="look-caption">
+                <span class="num">Hair 02</span>
+                <span class="tag">Classic crop</span>
+              </div>
+            </div>
+            <div class="look">
+              <div class="look-frame diptych">
+                <div class="half">
+                  <span class="half-tag">Inspiration</span>
+                  <img src="/img/src-hair-4.png" alt="Hairstyle inspiration — textured side-swept quiff" loading="lazy" />
+                </div>
+                <div class="half">
+                  <span class="half-tag accent">On you</span>
+                  <img src="/img/out-hair-4.png" alt="Result — the user with the side-swept quiff" loading="lazy" />
+                </div>
+              </div>
+              <div class="look-caption">
+                <span class="num">Hair 03</span>
+                <span class="tag">Side-swept quiff</span>
               </div>
             </div>
           </div>
@@ -1191,7 +1438,6 @@
           <a href="/privacy.html">Privacy</a>
           <a href="/terms.html">Terms</a>
           <a href="mailto:support@tryon-9z6.pages.dev">Contact</a>
-          <a href="https://www.pexels.com" target="_blank" rel="noopener">Imagery · Pexels</a>
         </div>
         <span>© MMXXVI · TRY · ON</span>
       </div>

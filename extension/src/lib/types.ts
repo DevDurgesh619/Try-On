@@ -283,6 +283,7 @@ export interface ErrorResponse {
     | 'auth_failed'
     | 'gemini_safety_block'
     | 'gemini_timeout'
+    | 'gemini_no_image'
     | 'backend_error'
     | 'storage_full'
     | 'invalid_email';

@@ -11,6 +11,7 @@ import {
 import {
   decrementForGeneration,
   nextUtcMidnightMs,
+  refundForGeneration,
   type Identity,
 } from './credits';
 import type { Db } from './db';
@@ -112,6 +113,10 @@ export interface GenerateDeps {
   now?: () => Date;
   uuid?: () => string;
   timeoutMs?: number;
+  /** Total attempts at the Gemini call (initial + retries). Default 2. */
+  maxAttempts?: number;
+  /** Delay between retry attempts in ms. Default 1500. */
+  retryDelayMs?: number;
 }
 
 function err(code: ErrorCode, message: string, status: number): Response {
@@ -286,10 +291,16 @@ export async function handleGenerate(
     identity = { kind: 'user', userId: result.claims.sub };
   }
 
-  if (deps.db) {
-    const nowMs = (deps.now ?? ((): Date => new Date()))().getTime();
-    const ledgerId = (deps.uuid ?? crypto.randomUUID.bind(crypto))();
-    const dec = await decrementForGeneration(deps.db, identity, {
+  // We track whether a credit was charged so any post-decrement failure path
+  // can issue a compensating refund. The user must never lose a credit when
+  // generation didn't produce an image.
+  let creditCharged = false;
+  const db = deps.db;
+  const nowMs = (deps.now ?? ((): Date => new Date()))().getTime();
+  const uuid = deps.uuid ?? crypto.randomUUID.bind(crypto);
+  if (db) {
+    const ledgerId = uuid();
+    const dec = await decrementForGeneration(db, identity, {
       now: nowMs,
       dailyResetsAt: nextUtcMidnightMs(new Date(nowMs)),
       ledgerId,
@@ -310,6 +321,17 @@ export async function handleGenerate(
       console.info(`[tryon] paywall code=${code} ${idStr} build=${build}`);
       return err(code, message, 402);
     }
+    creditCharged = true;
+  }
+
+  /** Compensating refund — invoked from every post-decrement failure path. */
+  async function refundIfCharged(reason: ErrorCode): Promise<void> {
+    if (!creditCharged || !db) return;
+    const idStr = identity.kind === 'user'
+      ? `user=${identity.userId}`
+      : `device=${identity.deviceId}`;
+    console.info(`[tryon] refund reason=${reason} ${idStr}`);
+    await refundForGeneration(db, identity, { now: nowMs, ledgerId: uuid() });
   }
 
   // Per-mode dispatch: build the prompt and the ordered image array.
@@ -319,6 +341,7 @@ export async function handleGenerate(
   if (body.mode === 'outfit') {
     const ordered = validateAndOrderGarments(body.garments);
     if (!ordered) {
+      await refundIfCharged('invalid_body');
       return err(
         'invalid_body',
         'garments must be exactly one entry, or one "top" and one "bottom"',
@@ -326,7 +349,10 @@ export async function handleGenerate(
       );
     }
     const basePrompt = pickPrompt(ordered);
-    if (!basePrompt) return err('invalid_body', 'no prompt for this garment combination', 400);
+    if (!basePrompt) {
+      await refundIfCharged('invalid_body');
+      return err('invalid_body', 'no prompt for this garment combination', 400);
+    }
     prompt = buildPrompt(basePrompt, body.accessoriesMode, !!body.hair_source);
     images = [
       { mimeType: body.reference_mime, data: body.reference_photo },
@@ -351,40 +377,71 @@ export async function handleGenerate(
   const timeoutMs = deps.timeoutMs ?? 120_000;
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
-  try {
-    const parts = await deps.gemini.generate({
-      prompt,
-      images,
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
+  // Nano Banana 2's Layer 2 policy filter is stochastic — the same prompt and
+  // images can return blockReason=OTHER on one attempt and a clean image on
+  // the next. We retry once on `gemini_no_image` only. Safety blocks and
+  // network errors are surfaced immediately (deterministic).
+  const maxAttempts = deps.maxAttempts ?? 2;
+  const retryDelayMs = deps.retryDelayMs ?? 1500;
 
-    const image = findFirstImagePart(parts);
-    if (!image) {
-      const text = parts.find((p) => p.text)?.text ?? '';
-      const isSafety = /safety|blocked|policy/i.test(text);
-      return err(
-        isSafety ? 'gemini_safety_block' : 'gemini_no_image',
-        isSafety ? "Couldn't generate that one — try a different photo or item" : 'No image in response',
-        isSafety ? 422 : 502,
-      );
+  try {
+    let lastText = '';
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const parts = await deps.gemini.generate({
+        prompt,
+        images,
+        signal: ctrl.signal,
+      });
+
+      const image = findFirstImagePart(parts);
+      if (image) {
+        clearTimeout(timer);
+        const ok: SuccessPayload = {
+          ok: true,
+          image: image.data,
+          mime_type: image.mimeType,
+          generation_id: uuid(),
+          ms_taken: Date.now() - t0,
+        };
+        void env;
+        return Response.json(ok);
+      }
+
+      lastText = parts.find((p) => p.text)?.text ?? '';
+      const isSafety = /safety|blocked|policy/i.test(lastText);
+
+      // Safety blocks are deterministic — don't retry.
+      if (isSafety) break;
+
+      // gemini_no_image — retry if attempts remain.
+      if (attempt < maxAttempts) {
+        console.info(
+          `[tryon] gemini retry attempt=${attempt + 1}/${maxAttempts} reason=gemini_no_image`,
+        );
+        await new Promise<void>((resolve) => setTimeout(resolve, retryDelayMs));
+      }
     }
 
-    const ok: SuccessPayload = {
-      ok: true,
-      image: image.data,
-      mime_type: image.mimeType,
-      generation_id: (deps.uuid ?? crypto.randomUUID.bind(crypto))(),
-      ms_taken: Date.now() - t0,
-    };
-    void env;
-    return Response.json(ok);
+    clearTimeout(timer);
+    const isSafety = /safety|blocked|policy/i.test(lastText);
+    const code: ErrorCode = isSafety ? 'gemini_safety_block' : 'gemini_no_image';
+    console.warn(`[tryon] generation failed code=${code} text=${lastText.slice(0, 200)}`);
+    await refundIfCharged(code);
+    return err(
+      code,
+      isSafety ? "Couldn't generate that one — try a different photo or item" : 'No image in response',
+      isSafety ? 422 : 502,
+    );
   } catch (e) {
     clearTimeout(timer);
     if (e instanceof Error && e.name === 'AbortError') {
+      console.warn(`[tryon] generation failed code=gemini_timeout after=${Date.now() - t0}ms`);
+      await refundIfCharged('gemini_timeout');
       return err('gemini_timeout', 'Generation took too long', 504);
     }
     const message = e instanceof Error ? e.message : 'unknown';
+    console.warn(`[tryon] generation failed code=backend_error message=${message}`);
+    await refundIfCharged('backend_error');
     return err('backend_error', message, 502);
   }
 }
@@ -422,10 +479,27 @@ export class RestGeminiClient implements GeminiClient {
     if (input.signal) init.signal = input.signal;
     const res = await fetch(url, init);
     if (!res.ok) {
+      // Capture and log the response body so wrangler tail shows the actual
+      // upstream reason (quota tier issue, malformed input, safety block,
+      // 429 throttling, etc.) instead of an opaque status code.
+      const bodyText = await res.text().catch(() => '<read failed>');
+      console.error(
+        `[tryon] gemini http=${res.status} body=${bodyText.slice(0, 500)}`,
+      );
       throw new Error(`gemini_http_${res.status}`);
     }
-    const json = (await res.json()) as { candidates?: { content?: { parts?: GeminiPart[] } }[] };
+    const json = (await res.json()) as {
+      candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string }[];
+      promptFeedback?: { blockReason?: string };
+    };
     const parts = json.candidates?.[0]?.content?.parts ?? [];
+    if (parts.length === 0) {
+      const finish = json.candidates?.[0]?.finishReason ?? '';
+      const block = json.promptFeedback?.blockReason ?? '';
+      console.warn(
+        `[tryon] gemini empty parts finishReason=${finish} blockReason=${block}`,
+      );
+    }
     return parts;
   }
 }

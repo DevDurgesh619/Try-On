@@ -106,6 +106,26 @@ export interface Db {
     now: number;
   }): Promise<DecrementResult>;
 
+  /**
+   * Refund a previously-decremented user credit (used when generation fails
+   * after a successful decrement — e.g. Gemini timeout / safety block /
+   * upstream HTTP error). Always restores to paid_credits_balance and rolls
+   * back daily_used by 1 (floored at 0). Writes a +1 ledger row with
+   * reason='refund'.
+   *
+   * Note on bucket: we always credit back to paid_credits_balance, not free.
+   * Tracking which bucket the original decrement hit would require an extra
+   * coordinated read; for the user the total visible balance is identical.
+   */
+  refundUserCredits(input: {
+    user_id: string;
+    now: number;
+    ledger_id: string;
+  }): Promise<void>;
+
+  /** Refund a device-bucket decrement. Decrements `used` by 1, floored at 0. */
+  refundDeviceCredits(input: { device_id: string }): Promise<void>;
+
   /** Idempotent on email; second insert is a no-op. */
   upsertWaitlist(row: WaitlistRow): Promise<void>;
 }
@@ -246,6 +266,36 @@ export function createD1Db(d1: D1Database): Db {
         return { ok: false, reason: 'out_of_credits' };
       }
       return { ok: true };
+    },
+
+    async refundUserCredits({ user_id, now, ledger_id }) {
+      await d1
+        .prepare(
+          `UPDATE users
+           SET paid_credits_balance = paid_credits_balance + 1,
+               daily_used = MAX(0, daily_used - 1)
+           WHERE id = ?`,
+        )
+        .bind(user_id)
+        .run();
+      await d1
+        .prepare(
+          `INSERT INTO ledger (id, user_id, delta, reason, external_id, created_at)
+           VALUES (?, ?, 1, 'refund', NULL, ?)`,
+        )
+        .bind(ledger_id, user_id, now)
+        .run();
+    },
+
+    async refundDeviceCredits({ device_id }) {
+      await d1
+        .prepare(
+          `UPDATE device_free_credits
+           SET used = MAX(0, used - 1)
+           WHERE device_id = ?`,
+        )
+        .bind(device_id)
+        .run();
     },
 
     async upsertWaitlist(row) {

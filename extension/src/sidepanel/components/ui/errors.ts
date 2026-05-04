@@ -5,6 +5,7 @@ type Code = ErrorResponse['code'];
 const HUMAN: Partial<Record<Code, string>> = {
   gemini_safety_block: 'This image triggered the safety filter. Try a different photo.',
   gemini_timeout: 'The model is taking longer than usual. Please try again.',
+  gemini_no_image: "Couldn't generate that one. Try a different photo or item — your credit was refunded.",
   backend_error: 'Something went wrong on our end. Try again in a moment.',
   auth_required: 'Please sign in to continue.',
   auth_expired: 'Your session expired. Sign in again.',

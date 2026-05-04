@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Wrangler local state (root)
+.wrangler/
+
+# Local-only working folders — source images, competitor reference screenshots, dev notes
+real images to add on website /
+Stolen Frontend Idea form faishion.ai/
+
+# Build zips for Chrome Web Store submissions
+tryon-*.zip
+
+# Editor / OS junk
+.idea/
+.vscode/
+*.swp

@@ -190,6 +190,49 @@ describe('/generate', () => {
     expect(body.code).toBe('gemini_safety_block');
   });
 
+  it('retries once on empty parts and succeeds on second attempt (Layer 2 stochastic block)', async () => {
+    const gen = vi
+      .fn<() => Promise<GeminiPart[]>>()
+      .mockResolvedValueOnce([]) // first attempt: blockReason=OTHER, empty parts
+      .mockResolvedValueOnce([{ inlineData: { mimeType: 'image/png', data: PNG_B64 } }]);
+    const res = await handle(post(validBody()), { GEMINI_API_KEY: 'k' }, {
+      gemini: { generate: gen },
+      db: null,
+      retryDelayMs: 0,
+    });
+    expect(res.status).toBe(200);
+    expect(gen).toHaveBeenCalledTimes(2);
+    const body = (await res.json()) as { ok: boolean; image: string };
+    expect(body.ok).toBe(true);
+    expect(body.image).toBe(PNG_B64);
+  });
+
+  it('returns gemini_no_image after all retry attempts fail with empty parts', async () => {
+    const gen = vi.fn<() => Promise<GeminiPart[]>>().mockResolvedValue([]);
+    const res = await handle(post(validBody()), { GEMINI_API_KEY: 'k' }, {
+      gemini: { generate: gen },
+      db: null,
+      retryDelayMs: 0,
+    });
+    expect(res.status).toBe(502);
+    expect(gen).toHaveBeenCalledTimes(2);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe('gemini_no_image');
+  });
+
+  it('does NOT retry on safety block (deterministic)', async () => {
+    const gen = vi
+      .fn<() => Promise<GeminiPart[]>>()
+      .mockResolvedValue([{ text: 'Blocked due to safety policy' }]);
+    const res = await handle(post(validBody()), { GEMINI_API_KEY: 'k' }, {
+      gemini: { generate: gen },
+      db: null,
+      retryDelayMs: 0,
+    });
+    expect(res.status).toBe(422);
+    expect(gen).toHaveBeenCalledTimes(1);
+  });
+
   it('maps timeouts to gemini_timeout', async () => {
     const gem: GeminiClient = {
       generate: ({ signal }) =>

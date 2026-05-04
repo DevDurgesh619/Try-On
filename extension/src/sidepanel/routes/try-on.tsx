@@ -316,7 +316,7 @@ export function TryOn(): JSX.Element {
       )}
 
       {phase === 'idle' && (
-        <section className="space-y-3 sticky bottom-[76px] -mx-5 px-5 pt-3 pb-4 bg-paper border-t border-rule">
+        <section className="space-y-3 -mx-5 px-5 pt-4 border-t border-rule">
           {!garmentsValid && (
             <Badge tone="signal">Pick a garment slot to continue</Badge>
           )}

@@ -81,7 +81,7 @@ const REMOTE_TO_LOCAL: Record<string, BackendErrorCode> = {
   gemini_safety_block: 'gemini_safety_block',
   gemini_timeout: 'gemini_timeout',
   invalid_body: 'backend_error',
-  gemini_no_image: 'backend_error',
+  gemini_no_image: 'gemini_no_image',
   backend_error: 'backend_error',
 };
 

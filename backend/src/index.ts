@@ -100,6 +100,8 @@ export async function handle(
       ...(overrides?.now ? { now: overrides.now } : {}),
       ...(overrides?.uuid ? { uuid: overrides.uuid } : {}),
       ...(overrides?.timeoutMs !== undefined ? { timeoutMs: overrides.timeoutMs } : {}),
+      ...(overrides?.maxAttempts !== undefined ? { maxAttempts: overrides.maxAttempts } : {}),
+      ...(overrides?.retryDelayMs !== undefined ? { retryDelayMs: overrides.retryDelayMs } : {}),
     };
     return wrapCors(await handleGenerate(request, env, deps));
   }

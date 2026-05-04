@@ -140,6 +140,35 @@ export function createMemoryDb(state?: MemDbState): { db: Db; state: MemDbState 
       });
     },
 
+    async refundUserCredits({ user_id, now, ledger_id }): Promise<void> {
+      return locked(async () => {
+        const u = s.users.get(user_id);
+        if (!u) return;
+        const next: UserRow = {
+          ...u,
+          paid_credits_balance: u.paid_credits_balance + 1,
+          daily_used: Math.max(0, u.daily_used - 1),
+        };
+        s.users.set(user_id, next);
+        s.ledger.push({
+          id: ledger_id,
+          user_id,
+          delta: 1,
+          reason: 'refund',
+          external_id: null,
+          created_at: now,
+        });
+      });
+    },
+
+    async refundDeviceCredits({ device_id }): Promise<void> {
+      return locked(async () => {
+        const cur = s.devices.get(device_id);
+        if (!cur) return;
+        s.devices.set(device_id, { ...cur, used: Math.max(0, cur.used - 1) });
+      });
+    },
+
     async upsertWaitlist(row) {
       if (s.waitlist.has(row.email)) return;
       s.waitlist.set(row.email, row);

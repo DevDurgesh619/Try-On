@@ -98,6 +98,8 @@ function PhotoStateSync({ onChange }: { onChange: (has: boolean) => void }): nul
       onChange(has);
       if (!has && location.pathname !== '/onboarding') {
         navigate('/onboarding', { replace: true });
+      } else if (has && location.pathname === '/onboarding') {
+        navigate('/', { replace: true });
       }
     };
     chrome.storage.onChanged.addListener(listener);
